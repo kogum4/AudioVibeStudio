@@ -110,6 +110,28 @@ export class AudioContextManager {
     return this.isPlaying;
   }
 
+  seek(time: number): void {
+    if (!this.buffer || !this.audioContext) return;
+    
+    if (this.isPlaying) {
+      this.pause();
+      this.pauseTime = Math.max(0, Math.min(time, this.buffer.duration));
+      this.play();
+    } else {
+      this.pauseTime = Math.max(0, Math.min(time, this.buffer.duration));
+    }
+  }
+
+  setVolume(_volume: number): void {
+    // Note: Web Audio API doesn't have built-in volume control on AudioContext
+    // This would typically be implemented with a GainNode
+    // For now, we'll store it but not implement until we add GainNode support
+  }
+
+  getAnalyzer(): AnalyserNode | null {
+    return this.analyser;
+  }
+
   getAudioStream(): MediaStream | null {
     return this.mediaStreamDestination?.stream || null;
   }

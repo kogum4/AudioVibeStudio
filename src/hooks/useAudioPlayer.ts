@@ -30,7 +30,7 @@ export function useAudioPlayer(): [AudioPlayerState, AudioPlayerControls] {
   });
 
   const audioManagerRef = useRef<AudioContextManager | null>(null);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
 
   // Initialize audio manager
   useEffect(() => {
@@ -154,28 +154,58 @@ export function useAudioAnalysis() {
   const [analysisData, setAnalysisData] = useState({
     frequencyBands: { bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0 },
     waveformData: new Float32Array(0),
-    beatInfo: { isBeat: false, intensity: 0, bpm: 0 },
+    beatInfo: { isBeat: false, intensity: 0 },
     volume: 0
   });
 
   const audioManagerRef = useRef<AudioContextManager | null>(null);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     audioManagerRef.current = AudioContextManager.getInstance();
     
     const updateAnalysis = () => {
       const manager = audioManagerRef.current;
-      if (manager && manager.isPlaying()) {
-        const analyzer = manager.getAnalyzer();
-        if (analyzer) {
-          setAnalysisData({
-            frequencyBands: analyzer.getFrequencyBands(),
-            waveformData: analyzer.getWaveformData(),
-            beatInfo: analyzer.detectBeat(),
-            volume: analyzer.getAverageVolume()
-          });
+      if (manager && manager.getIsPlaying()) {
+        const frequencyData = manager.getFrequencyData();
+        const timeDomainData = manager.getTimeDomainData();
+        
+        // Simple frequency band analysis
+        const bassEnd = Math.floor(frequencyData.length * 0.1);
+        const lowMidEnd = Math.floor(frequencyData.length * 0.2);
+        const midEnd = Math.floor(frequencyData.length * 0.4);
+        const highMidEnd = Math.floor(frequencyData.length * 0.7);
+        
+        const calculateAverage = (data: Uint8Array, start: number, end: number) => {
+          let sum = 0;
+          for (let i = start; i < end; i++) {
+            sum += (data[i] || 0);
+          }
+          return sum / (end - start) / 255;
+        };
+
+        const frequencyBands = {
+          bass: calculateAverage(frequencyData, 0, bassEnd),
+          lowMid: calculateAverage(frequencyData, bassEnd, lowMidEnd),
+          mid: calculateAverage(frequencyData, lowMidEnd, midEnd),
+          highMid: calculateAverage(frequencyData, midEnd, highMidEnd),
+          treble: calculateAverage(frequencyData, highMidEnd, frequencyData.length)
+        };
+
+        const waveformData = new Float32Array(timeDomainData.length);
+        for (let i = 0; i < timeDomainData.length; i++) {
+          waveformData[i] = ((timeDomainData[i] || 128) - 128) / 128;
         }
+
+        const volume = frequencyData.reduce((acc, val) => acc + val, 0) / frequencyData.length / 255;
+        const beatInfo = { isBeat: frequencyBands.bass > 0.3, intensity: frequencyBands.bass };
+
+        setAnalysisData({
+          frequencyBands,
+          waveformData,
+          beatInfo,
+          volume
+        });
       }
       animationFrameRef.current = requestAnimationFrame(updateAnalysis);
     };

@@ -4,7 +4,6 @@ import {
   getFileExtension, 
   formatDuration, 
   isAudioFile,
-  SUPPORTED_AUDIO_FORMATS,
   MAX_FILE_SIZE,
   MIN_FILE_SIZE 
 } from '../fileValidation';

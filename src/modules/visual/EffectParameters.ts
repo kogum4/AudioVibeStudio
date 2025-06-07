@@ -54,6 +54,14 @@ export class EffectParameterManager {
     this.notifyListeners(effectName, params);
   }
 
+  updateParameter(effectName: string, paramName: string, value: any): void {
+    this.setParameter(effectName, paramName, value);
+  }
+
+  resetParameters(effectName: string): void {
+    this.resetToDefaults(effectName);
+  }
+
   addParameterListener(effectName: string, callback: (params: EffectParameter) => void): void {
     if (!this.listeners.has(effectName)) {
       this.listeners.set(effectName, []);

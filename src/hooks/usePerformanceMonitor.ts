@@ -174,7 +174,7 @@ export function useFrameRate() {
   const [frameRate, setFrameRate] = useState(0);
   const frameCountRef = useRef(0);
   const lastTimeRef = useRef(performance.now());
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
 
   const measureFrameRate = useCallback(() => {
     frameCountRef.current++;

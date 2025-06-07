@@ -21,26 +21,55 @@ export function EditorScreen() {
 
     // Initialize visual engine
     if (canvasRef.current && !visualEngineRef.current) {
+      console.log('Initializing VisualEngine...');
       visualEngineRef.current = new VisualEngine(canvasRef.current);
       visualEngineRef.current.start();
     }
 
+    // No cleanup in development to avoid React Strict Mode issues
+    // The visual engine will be cleaned up when the component unmounts for real
     return () => {
-      visualEngineRef.current?.dispose();
+      // Only dispose if not in development mode or if component is truly unmounting
+      if (process.env.NODE_ENV !== 'development') {
+        visualEngineRef.current?.dispose();
+      }
     };
   }, [navigate]);
 
   const handlePlayPause = () => {
     if (isPlaying) {
       audioManager.pause();
+      console.log('Audio paused');
     } else {
       audioManager.play();
+      console.log('Audio play called');
     }
-    setIsPlaying(!isPlaying);
+    const newPlayingState = !isPlaying;
+    setIsPlaying(newPlayingState);
+    
+    console.log('visualEngineRef.current:', visualEngineRef.current);
+    console.log('About to call setAudioPlaying with:', newPlayingState);
+    
+    // Ensure visual engine is running
+    if (visualEngineRef.current) {
+      if (!visualEngineRef.current.getIsRunning()) {
+        console.log('VisualEngine was stopped, restarting...');
+        visualEngineRef.current.start();
+      }
+      visualEngineRef.current.setAudioPlaying(newPlayingState);
+    }
+    
+    // Debug: Check if audio is actually playing
+    setTimeout(() => {
+      console.log('AudioManager isPlaying:', audioManager.getIsPlaying());
+      console.log('AudioManager currentTime:', audioManager.getCurrentTime());
+      console.log('AudioManager duration:', audioManager.getDuration());
+    }, 100);
   };
 
   const handleStop = () => {
     audioManager.stop();
+    visualEngineRef.current?.setAudioPlaying(false);
     setIsPlaying(false);
   };
 

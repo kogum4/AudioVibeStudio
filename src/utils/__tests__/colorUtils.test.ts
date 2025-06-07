@@ -4,7 +4,6 @@ import {
   rgbToHsl,
   hslToRgb,
   adjustBrightness,
-  adjustSaturation,
   blendColors,
   getComplementaryColor,
   generateColorPalette,
@@ -112,8 +111,10 @@ describe('colorUtils', () => {
     it('should return complementary color', () => {
       const red = '#ff0000';
       const complementary = getComplementaryColor(red);
-      const hsl = rgbToHsl(...Object.values(hexToRgb(complementary)!));
-      const originalHsl = rgbToHsl(...Object.values(hexToRgb(red)!));
+      const complementaryRgb = hexToRgb(complementary)!;
+      const originalRgb = hexToRgb(red)!;
+      const hsl = rgbToHsl(complementaryRgb.r, complementaryRgb.g, complementaryRgb.b);
+      const originalHsl = rgbToHsl(originalRgb.r, originalRgb.g, originalRgb.b);
       
       expect(Math.abs(hsl.h - originalHsl.h)).toBeCloseTo(180, 0);
     });

@@ -38,6 +38,7 @@ export class VisualEngine {
   private currentEffect: VisualEffect | null = null;
   private animationId: number | null = null;
   private isRunning = false;
+  private isAudioPlaying = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -51,6 +52,9 @@ export class VisualEngine {
     // Set canvas size
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    
+    // Debug: Log analyzer initialization
+    console.log('VisualEngine initialized with analyzer:', this.analyzer);
   }
 
   private resize(): void {
@@ -91,18 +95,36 @@ export class VisualEngine {
     return effectParameterManager;
   }
 
+  setAudioPlaying(playing: boolean): void {
+    console.log('VisualEngine.setAudioPlaying called with:', playing);
+    this.isAudioPlaying = playing;
+    console.log('VisualEngine.isAudioPlaying is now:', this.isAudioPlaying);
+  }
+
+  getIsRunning(): boolean {
+    return this.isRunning;
+  }
+
   start(): void {
-    if (this.isRunning) return;
+    console.log('VisualEngine.start() called, isRunning:', this.isRunning);
+    if (this.isRunning) {
+      console.log('Already running, returning early');
+      return;
+    }
     
     if (!this.currentEffect) {
+      console.log('No current effect, setting waveform');
       this.setEffect('waveform');
     }
     
     this.isRunning = true;
+    console.log('Starting animation, isRunning set to:', this.isRunning);
     this.animate();
   }
 
   stop(): void {
+    console.log('VisualEngine.stop() called! Stack trace:');
+    console.trace();
     this.isRunning = false;
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
@@ -111,14 +133,43 @@ export class VisualEngine {
   }
 
   private animate(): void {
+    console.log('animate() called, isRunning:', this.isRunning, 'isAudioPlaying:', this.isAudioPlaying);
     if (!this.isRunning) return;
 
-    this.currentEffect?.render();
+    // Only render with audio data when audio is playing
+    if (this.currentEffect) {
+      if (this.isAudioPlaying) {
+        console.log('Rendering effect because audio is playing');
+        this.currentEffect.render();
+      } else {
+        console.log('Rendering static frame because audio is paused');
+        // Render static frame when paused
+        this.renderStaticFrame();
+      }
+    } else {
+      console.log('No current effect set');
+    }
     
     this.animationId = requestAnimationFrame(() => this.animate());
   }
 
+  private renderStaticFrame(): void {
+    // Show a static visualization when paused
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Draw a static waveform line
+    this.ctx.strokeStyle = '#4ecdc4';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, this.canvas.height / 2);
+    this.ctx.lineTo(this.canvas.width, this.canvas.height / 2);
+    this.ctx.stroke();
+  }
+
   dispose(): void {
+    console.log('VisualEngine.dispose() called! Stack trace:');
+    console.trace();
     this.stop();
     window.removeEventListener('resize', () => this.resize());
   }
@@ -126,11 +177,17 @@ export class VisualEngine {
 
 class WaveformEffect extends VisualEffect {
   render(): void {
+    console.log('WaveformEffect.render() called');
     this.clear();
     
     const waveformData = this.analyzer.getWaveformData();
     const bands = this.analyzer.getFrequencyBands();
     const beat = this.analyzer.detectBeat();
+    
+    // Debug: Always log for now to see what's happening
+    console.log('Waveform data length:', waveformData.length);
+    console.log('Frequency bands:', bands);
+    console.log('Sample waveform values:', waveformData.slice(0, 5));
     
     // Get parameters
     const intensity = this.parameters.intensity / 100;
@@ -712,6 +769,7 @@ class ThreeDEffect extends VisualEffect {
     const objectTypes: ('cube' | 'sphere' | 'pyramid' | 'torus')[] = ['cube', 'sphere', 'pyramid', 'torus'];
     
     for (let i = 0; i < 12; i++) {
+      const randomType = objectTypes[Math.floor(Math.random() * objectTypes.length)] as 'cube' | 'sphere' | 'pyramid' | 'torus';
       const object: Object3D = {
         x: (Math.random() - 0.5) * 400,
         y: (Math.random() - 0.5) * 400,
@@ -720,7 +778,7 @@ class ThreeDEffect extends VisualEffect {
         rotationY: Math.random() * Math.PI * 2,
         rotationZ: Math.random() * Math.PI * 2,
         scale: 20 + Math.random() * 40,
-        type: objectTypes[Math.floor(Math.random() * objectTypes.length)],
+        type: randomType,
         color: `hsl(${Math.random() * 360}, 70%, 60%)`,
         velocity: {
           x: (Math.random() - 0.5) * 2,
@@ -739,11 +797,11 @@ class ThreeDEffect extends VisualEffect {
     this.time += 0.016;
 
     // Get parameters
-    const objectType = this.parameters.objectType || 'mixed';
+    const objectType = this.parameters.object || 'cube';
     const color = this.parameters.color || null;
     const rotationSpeed = this.parameters.rotationSpeed || 1;
-    const objectCount = this.parameters.objectCount || 8;
-    const movement = this.parameters.movement !== false;
+    const objectCount = 8;
+    const movement = true;
 
     const bands = this.analyzer.getFrequencyBands();
     const beat = this.analyzer.detectBeat();
@@ -764,7 +822,7 @@ class ThreeDEffect extends VisualEffect {
     }
 
     // Update and render objects
-    this.objects.forEach((obj, index) => {
+    this.objects.forEach((obj) => {
       this.updateObject(obj, bands, beat, rotationSpeed, movement);
       this.renderObject(obj, bands, beat, color, objectType);
     });
@@ -775,6 +833,7 @@ class ThreeDEffect extends VisualEffect {
 
   private addRandomObject(): void {
     const objectTypes: ('cube' | 'sphere' | 'pyramid' | 'torus')[] = ['cube', 'sphere', 'pyramid', 'torus'];
+    const randomType = objectTypes[Math.floor(Math.random() * objectTypes.length)] as 'cube' | 'sphere' | 'pyramid' | 'torus';
     
     const object: Object3D = {
       x: (Math.random() - 0.5) * 400,
@@ -784,7 +843,7 @@ class ThreeDEffect extends VisualEffect {
       rotationY: Math.random() * Math.PI * 2,
       rotationZ: Math.random() * Math.PI * 2,
       scale: 20 + Math.random() * 40,
-      type: objectTypes[Math.floor(Math.random() * objectTypes.length)],
+      type: randomType,
       color: `hsl(${Math.random() * 360}, 70%, 60%)`,
       velocity: {
         x: (Math.random() - 0.5) * 2,
@@ -870,7 +929,7 @@ class ThreeDEffect extends VisualEffect {
         this.renderCube(x, y, audioScale, obj);
         break;
       case 'sphere':
-        this.renderSphere(x, y, audioScale, obj);
+        this.renderSphere(x, y, audioScale);
         break;
       case 'pyramid':
         this.renderPyramid(x, y, audioScale, obj);
@@ -944,7 +1003,7 @@ class ThreeDEffect extends VisualEffect {
     this.ctx.restore();
   }
 
-  private renderSphere(x: number, y: number, size: number, obj: Object3D): void {
+  private renderSphere(x: number, y: number, size: number): void {
     this.ctx.save();
     this.ctx.translate(x, y);
 
@@ -1052,13 +1111,15 @@ class ThreeDEffect extends VisualEffect {
     // Simple brightness adjustment for rgba colors
     if (color.startsWith('rgba')) {
       const matches = color.match(/rgba?\(([^)]+)\)/);
-      if (matches) {
+      if (matches && matches[1]) {
         const values = matches[1].split(',').map(v => parseFloat(v.trim()));
-        const r = Math.max(0, Math.min(255, values[0] + (amount * 255)));
-        const g = Math.max(0, Math.min(255, values[1] + (amount * 255)));
-        const b = Math.max(0, Math.min(255, values[2] + (amount * 255)));
-        const a = values[3] || 1;
-        return `rgba(${r}, ${g}, ${b}, ${a})`;
+        if (values.length >= 3 && values[0] !== undefined && values[1] !== undefined && values[2] !== undefined) {
+          const r = Math.max(0, Math.min(255, values[0] + (amount * 255)));
+          const g = Math.max(0, Math.min(255, values[1] + (amount * 255)));
+          const b = Math.max(0, Math.min(255, values[2] + (amount * 255)));
+          const a = values[3] || 1;
+          return `rgba(${r}, ${g}, ${b}, ${a})`;
+        }
       }
     }
     return color;

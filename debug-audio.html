@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Debug Test</title>
+</head>
+<body>
+    <h1>Audio Analysis Debug Test</h1>
+    <input type="file" id="fileInput" accept="audio/*">
+    <br><br>
+    <button id="playBtn">Play</button>
+    <button id="pauseBtn">Pause</button>
+    <br><br>
+    <canvas id="canvas" width="400" height="200" style="border: 1px solid black;"></canvas>
+    <br><br>
+    <div id="debug"></div>
+
+    <script>
+        let audioContext = null;
+        let analyser = null;
+        let source = null;
+        let audioBuffer = null;
+        let isPlaying = false;
+        let startTime = 0;
+        let pauseTime = 0;
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const debugDiv = document.getElementById('debug');
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.8;
+
+                const arrayBuffer = await file.arrayBuffer();
+                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                
+                debugDiv.innerHTML = `Loaded: ${file.name}, Duration: ${audioBuffer.duration.toFixed(2)}s`;
+            } catch (error) {
+                debugDiv.innerHTML = `Error: ${error.message}`;
+            }
+        });
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (!audioBuffer || !audioContext || isPlaying) return;
+
+            source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            const offset = pauseTime;
+            source.start(0, offset);
+            startTime = audioContext.currentTime - offset;
+            isPlaying = true;
+
+            source.onended = () => {
+                isPlaying = false;
+                pauseTime = 0;
+            };
+
+            animate();
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            if (!source || !audioContext || !isPlaying) return;
+
+            source.stop();
+            pauseTime = audioContext.currentTime - startTime;
+            isPlaying = false;
+        });
+
+        function animate() {
+            if (!isPlaying || !analyser) return;
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            const timeDomainData = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(timeDomainData);
+
+            // Clear canvas
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw frequency data
+            ctx.strokeStyle = 'lime';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            const sliceWidth = canvas.width / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+
+                if (i === 0) {
+                    ctx.moveTo(x, canvas.height - y);
+                } else {
+                    ctx.lineTo(x, canvas.height - y);
+                }
+
+                x += sliceWidth;
+            }
+            ctx.stroke();
+
+            // Draw waveform
+            ctx.strokeStyle = 'red';
+            ctx.beginPath();
+            x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = (timeDomainData[i] - 128) / 128.0;
+                const y = canvas.height / 2 + v * canvas.height / 4;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+            ctx.stroke();
+
+            // Calculate frequency bands
+            const bassEnd = Math.floor(bufferLength * 0.1);
+            const lowMidEnd = Math.floor(bufferLength * 0.2);
+            const midEnd = Math.floor(bufferLength * 0.4);
+            const highMidEnd = Math.floor(bufferLength * 0.7);
+
+            const calculateAverage = (data, start, end) => {
+                let sum = 0;
+                for (let i = start; i < end; i++) {
+                    sum += data[i];
+                }
+                return sum / (end - start);
+            };
+
+            const bass = calculateAverage(dataArray, 0, bassEnd);
+            const lowMid = calculateAverage(dataArray, bassEnd, lowMidEnd);
+            const mid = calculateAverage(dataArray, lowMidEnd, midEnd);
+            const highMid = calculateAverage(dataArray, midEnd, highMidEnd);
+            const treble = calculateAverage(dataArray, highMidEnd, bufferLength);
+
+            debugDiv.innerHTML = `
+                Bass: ${bass.toFixed(1)} | 
+                LowMid: ${lowMid.toFixed(1)} | 
+                Mid: ${mid.toFixed(1)} | 
+                HighMid: ${highMid.toFixed(1)} | 
+                Treble: ${treble.toFixed(1)}
+            `;
+
+            requestAnimationFrame(animate);
+        }
+    </script>
+</body>
+</html>
