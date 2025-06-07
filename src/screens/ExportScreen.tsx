@@ -17,6 +17,8 @@ export function ExportScreen() {
     quality: 'high',
     fps: 30
   });
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [formatSupport, setFormatSupport] = useState<{ [key: string]: boolean }>({});
   const audioManager = AudioContextManager.getInstance();
 
   useEffect(() => {
@@ -82,6 +84,9 @@ export function ExportScreen() {
       videoExporterRef.current.setProgressCallback((progress) => {
         setExportProgress(progress);
       });
+      
+      // Get format support information
+      setFormatSupport(videoExporterRef.current.getDetailedFormatSupport());
     }
 
     return () => {
@@ -210,7 +215,319 @@ export function ExportScreen() {
             </button>
           </div>
         )}
+
+        {/* Format Support Diagnostics */}
+        <div className="diagnostics-section">
+          <button 
+            className="diagnostics-toggle"
+            onClick={() => setShowDiagnostics(!showDiagnostics)}
+          >
+            {showDiagnostics ? '🔽' : '▶️'} Format Support & Troubleshooting
+          </button>
+          
+          {showDiagnostics && (
+            <div className="diagnostics-content">
+              {/* MP4 Compatibility Warning */}
+              {settings.format === 'mp4' && (
+                <div className="compatibility-warning">
+                  <h4>⚠️ MP4エクスポートについて</h4>
+                  <p>
+                    ブラウザのMP4サポートは制限されており、エクスポートされたファイルが一部のプレイヤーで再生できない場合があります。
+                  </p>
+                  <ul>
+                    <li><strong>推奨:</strong> より安定したWebM形式を使用</li>
+                    <li><strong>変換:</strong> エクスポート後にFFmpegやHandBrakeで変換</li>
+                    <li><strong>ブラウザ:</strong> Chrome/Edgeで最適なMP4サポート</li>
+                  </ul>
+                </div>
+              )}
+
+              {/* Format Support Table */}
+              <div className="support-table">
+                <h4>📊 対応フォーマット詳細</h4>
+                <div className="support-grid">
+                  {Object.entries(formatSupport).map(([format, supported]) => (
+                    <div key={format} className={`support-item ${supported ? 'supported' : 'unsupported'}`}>
+                      <span className="format-name">{format}</span>
+                      <span className="support-status">
+                        {supported ? '✅ サポート' : '❌ 非サポート'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Troubleshooting Tips */}
+              <div className="troubleshooting">
+                <h4>🔧 トラブルシューティング</h4>
+                <div className="tips">
+                  <div className="tip">
+                    <strong>問題:</strong> MP4が再生できない
+                    <br />
+                    <strong>解決法:</strong> WebM形式でエクスポートするか、VLC Media Playerを使用
+                  </div>
+                  <div className="tip">
+                    <strong>問題:</strong> ファイルサイズが大きすぎる
+                    <br />
+                    <strong>解決法:</strong> 品質を「Low」または「Medium」に変更
+                  </div>
+                  <div className="tip">
+                    <strong>問題:</strong> エクスポートが失敗する
+                    <br />
+                    <strong>解決法:</strong> ブラウザを再起動し、他のタブを閉じてから再試行
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      <style>{`
+        .export-screen {
+          min-height: 100vh;
+          background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+          color: white;
+          padding: 20px;
+        }
+
+        .export-container {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .export-container h1 {
+          text-align: center;
+          color: #4ecdc4;
+          margin-bottom: 30px;
+        }
+
+        .preview-section {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 30px;
+        }
+
+        .export-canvas {
+          border: 2px solid #333;
+          border-radius: 8px;
+          max-width: 400px;
+          max-height: 712px;
+          width: 100%;
+          height: auto;
+        }
+
+        .export-settings {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 20px;
+          margin-bottom: 30px;
+          background: rgba(0, 0, 0, 0.3);
+          padding: 20px;
+          border-radius: 8px;
+        }
+
+        .setting-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .setting-group label {
+          font-weight: 500;
+          color: #ccc;
+        }
+
+        .setting-group select {
+          padding: 10px;
+          background: #333;
+          border: 1px solid #555;
+          border-radius: 4px;
+          color: white;
+          font-size: 14px;
+        }
+
+        .start-export-btn, .download-btn {
+          display: block;
+          width: 100%;
+          max-width: 300px;
+          margin: 0 auto;
+          padding: 15px 30px;
+          background: #4ecdc4;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .start-export-btn:hover, .download-btn:hover {
+          background: #45b7b8;
+        }
+
+        .export-progress {
+          max-width: 400px;
+          margin: 0 auto;
+          text-align: center;
+        }
+
+        .progress-bar {
+          width: 100%;
+          height: 8px;
+          background: #333;
+          border-radius: 4px;
+          overflow: hidden;
+          margin-bottom: 15px;
+        }
+
+        .progress-fill {
+          height: 100%;
+          background: #4ecdc4;
+          transition: width 0.3s ease;
+        }
+
+        .progress-info {
+          color: #ccc;
+        }
+
+        .export-complete {
+          text-align: center;
+          margin: 30px 0;
+        }
+
+        .export-complete p {
+          font-size: 18px;
+          margin-bottom: 15px;
+          color: #4ecdc4;
+        }
+
+        .diagnostics-section {
+          margin-top: 40px;
+          border-top: 1px solid #333;
+          padding-top: 20px;
+        }
+
+        .diagnostics-toggle {
+          background: transparent;
+          border: 1px solid #555;
+          color: #ccc;
+          padding: 10px 15px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          width: 100%;
+          text-align: left;
+          transition: all 0.2s;
+        }
+
+        .diagnostics-toggle:hover {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: #4ecdc4;
+        }
+
+        .diagnostics-content {
+          margin-top: 20px;
+          padding: 20px;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 8px;
+        }
+
+        .compatibility-warning {
+          background: rgba(231, 76, 60, 0.1);
+          border: 1px solid rgba(231, 76, 60, 0.3);
+          border-radius: 6px;
+          padding: 15px;
+          margin-bottom: 20px;
+        }
+
+        .compatibility-warning h4 {
+          color: #e74c3c;
+          margin: 0 0 10px 0;
+        }
+
+        .compatibility-warning ul {
+          margin: 10px 0 0 20px;
+        }
+
+        .compatibility-warning li {
+          margin: 5px 0;
+          color: #ccc;
+        }
+
+        .support-table {
+          margin-bottom: 20px;
+        }
+
+        .support-table h4 {
+          color: #4ecdc4;
+          margin: 0 0 15px 0;
+        }
+
+        .support-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .support-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 12px;
+          border-radius: 4px;
+          font-size: 12px;
+        }
+
+        .support-item.supported {
+          background: rgba(39, 174, 96, 0.1);
+          border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+
+        .support-item.unsupported {
+          background: rgba(231, 76, 60, 0.1);
+          border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        .format-name {
+          font-family: monospace;
+          color: #ccc;
+        }
+
+        .troubleshooting h4 {
+          color: #4ecdc4;
+          margin: 0 0 15px 0;
+        }
+
+        .tips {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .tip {
+          padding: 12px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 4px;
+          font-size: 14px;
+          line-height: 1.4;
+        }
+
+        .tip strong {
+          color: #4ecdc4;
+        }
+
+        @media (max-width: 768px) {
+          .export-settings {
+            grid-template-columns: 1fr;
+          }
+          
+          .export-canvas {
+            max-width: 300px;
+          }
+        }
+      `}</style>
     </div>
   );
 }

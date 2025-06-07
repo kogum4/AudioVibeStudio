@@ -175,18 +175,32 @@ export class VideoExporter {
   private getMimeType(format: string): string {
     switch (format) {
       case 'webm':
+        // WebMは安定して動作する最適なコーデックを選択
         if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
           return 'video/webm;codecs=vp9,opus';
         } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
           return 'video/webm;codecs=vp8,opus';
+        } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+          return 'video/webm;codecs=vp8';
         } else {
           return 'video/webm';
         }
       case 'mp4':
-        if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
+        // MP4の互換性を改善 - より広くサポートされているコーデックを試行
+        if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E,mp4a.40.2')) {
+          return 'video/mp4;codecs=avc1.42E01E,mp4a.40.2'; // H.264 Baseline + AAC LC
+        } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42001E,mp4a.40.2')) {
+          return 'video/mp4;codecs=avc1.42001E,mp4a.40.2'; // H.264 Constrained Baseline + AAC LC
+        } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
           return 'video/mp4;codecs=h264,aac';
-        } else {
+        } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+          return 'video/mp4;codecs=avc1';
+        } else if (MediaRecorder.isTypeSupported('video/mp4')) {
           return 'video/mp4';
+        } else {
+          // MP4がサポートされていない場合はWebMにフォールバック
+          console.warn('MP4 not supported, falling back to WebM');
+          return this.getMimeType('webm');
         }
       default:
         return 'video/webm';
@@ -213,14 +227,45 @@ export class VideoExporter {
   getSupportedFormats(): string[] {
     const formats: string[] = [];
     
-    if (MediaRecorder.isTypeSupported('video/webm')) {
+    // WebMサポートチェック
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ||
+        MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ||
+        MediaRecorder.isTypeSupported('video/webm')) {
       formats.push('webm');
     }
     
-    if (MediaRecorder.isTypeSupported('video/mp4')) {
+    // MP4サポートチェック - より厳密にチェック
+    if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E,mp4a.40.2') ||
+        MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42001E,mp4a.40.2') ||
+        MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac') ||
+        MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') ||
+        MediaRecorder.isTypeSupported('video/mp4')) {
       formats.push('mp4');
     }
     
     return formats;
+  }
+
+  // デバッグ用：サポートされているMIMEタイプを詳細に調べる
+  getDetailedFormatSupport(): { [key: string]: boolean } {
+    const supportInfo: { [key: string]: boolean } = {};
+    
+    // WebM variants
+    supportInfo['video/webm'] = MediaRecorder.isTypeSupported('video/webm');
+    supportInfo['video/webm;codecs=vp8'] = MediaRecorder.isTypeSupported('video/webm;codecs=vp8');
+    supportInfo['video/webm;codecs=vp8,opus'] = MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus');
+    supportInfo['video/webm;codecs=vp9'] = MediaRecorder.isTypeSupported('video/webm;codecs=vp9');
+    supportInfo['video/webm;codecs=vp9,opus'] = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus');
+    
+    // MP4 variants
+    supportInfo['video/mp4'] = MediaRecorder.isTypeSupported('video/mp4');
+    supportInfo['video/mp4;codecs=avc1'] = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1');
+    supportInfo['video/mp4;codecs=h264'] = MediaRecorder.isTypeSupported('video/mp4;codecs=h264');
+    supportInfo['video/mp4;codecs=h264,aac'] = MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac');
+    supportInfo['video/mp4;codecs=avc1.42E01E'] = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E');
+    supportInfo['video/mp4;codecs=avc1.42E01E,mp4a.40.2'] = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E,mp4a.40.2');
+    supportInfo['video/mp4;codecs=avc1.42001E,mp4a.40.2'] = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42001E,mp4a.40.2');
+    
+    return supportInfo;
   }
 }
