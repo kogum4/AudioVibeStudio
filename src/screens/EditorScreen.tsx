@@ -357,6 +357,7 @@ export function EditorScreen() {
                   
                   <ParameterControls 
                     effectName={currentEffect} 
+                    visualEngine={visualEngineRef.current}
                     onParameterChange={(paramName, value) => {
                       console.log(`Parameter ${paramName} changed to:`, value);
                     }}

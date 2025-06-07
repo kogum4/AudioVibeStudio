@@ -10,13 +10,15 @@ export abstract class VisualEffect {
   protected analyzer: AudioAnalyzer;
   protected parameters: EffectParameter = {};
   protected effectName: string;
+  protected engine: VisualEngine;
 
-  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string) {
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string, engine: VisualEngine) {
     this.ctx = ctx;
     this.width = width;
     this.height = height;
     this.analyzer = analyzer;
     this.effectName = effectName;
+    this.engine = engine;
     this.parameters = effectParameterManager.getParameters(effectName);
     
     // Listen for parameter changes
@@ -28,7 +30,16 @@ export abstract class VisualEffect {
   abstract render(): void;
   
   protected clear(): void {
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    const bgColor = this.engine.getBackgroundColor();
+    // Convert hex to rgba with low opacity for trail effect
+    if (bgColor.startsWith('#')) {
+      const r = parseInt(bgColor.slice(1, 3), 16);
+      const g = parseInt(bgColor.slice(3, 5), 16);
+      const b = parseInt(bgColor.slice(5, 7), 16);
+      this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.1)`;
+    } else {
+      this.ctx.fillStyle = bgColor;
+    }
     this.ctx.fillRect(0, 0, this.width, this.height);
   }
 }
@@ -43,6 +54,7 @@ export class VisualEngine {
   private isAudioPlaying = false;
   private textRenderer: TextRenderer;
   private startTime = Date.now();
+  private backgroundColor = '#000000';
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -53,6 +65,12 @@ export class VisualEngine {
     this.ctx = ctx;
     this.analyzer = new AudioAnalyzer();
     this.textRenderer = new TextRenderer(ctx, this.canvas.width, this.canvas.height, this.analyzer);
+    
+    // Load background color from localStorage
+    const savedBackgroundColor = localStorage.getItem('audioVibe_backgroundColor');
+    if (savedBackgroundColor) {
+      this.backgroundColor = savedBackgroundColor;
+    }
     
     // Set canvas size
     this.resize();
@@ -82,22 +100,22 @@ export class VisualEngine {
   setEffect(effectType: string): void {
     switch (effectType) {
       case 'waveform':
-        this.currentEffect = new WaveformEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'waveform');
+        this.currentEffect = new WaveformEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'waveform', this);
         break;
       case 'particles':
-        this.currentEffect = new ParticleEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'particles');
+        this.currentEffect = new ParticleEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'particles', this);
         break;
       case 'geometric':
-        this.currentEffect = new GeometricEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'geometric');
+        this.currentEffect = new GeometricEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'geometric', this);
         break;
       case 'gradient':
-        this.currentEffect = new GradientEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'gradient');
+        this.currentEffect = new GradientEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'gradient', this);
         break;
       case '3d':
-        this.currentEffect = new ThreeDEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, '3d');
+        this.currentEffect = new ThreeDEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, '3d', this);
         break;
       default:
-        this.currentEffect = new WaveformEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'waveform');
+        this.currentEffect = new WaveformEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'waveform', this);
     }
   }
 
@@ -128,6 +146,16 @@ export class VisualEngine {
 
   getTextRenderer(): TextRenderer {
     return this.textRenderer;
+  }
+
+  setBackgroundColor(color: string): void {
+    this.backgroundColor = color;
+    // Save to localStorage for persistence
+    localStorage.setItem('audioVibe_backgroundColor', color);
+  }
+
+  getBackgroundColor(): string {
+    return this.backgroundColor;
   }
 
   setAudioPlaying(playing: boolean): void {
@@ -193,8 +221,16 @@ export class VisualEngine {
   }
 
   private renderStaticFrame(): void {
-    // Show a static visualization when paused
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    // Show a static visualization when paused with background color
+    const bgColor = this.backgroundColor;
+    if (bgColor.startsWith('#')) {
+      const r = parseInt(bgColor.slice(1, 3), 16);
+      const g = parseInt(bgColor.slice(3, 5), 16);
+      const b = parseInt(bgColor.slice(5, 7), 16);
+      this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.1)`;
+    } else {
+      this.ctx.fillStyle = bgColor;
+    }
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
     // Draw a static waveform line
@@ -215,6 +251,10 @@ export class VisualEngine {
 }
 
 class WaveformEffect extends VisualEffect {
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string, engine: VisualEngine) {
+    super(ctx, width, height, analyzer, effectName, engine);
+  }
+
   render(): void {
     console.log('WaveformEffect.render() called');
     this.clear();
@@ -343,6 +383,10 @@ interface Particle {
 class ParticleEffect extends VisualEffect {
   private particles: Particle[] = [];
 
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string, engine: VisualEngine) {
+    super(ctx, width, height, analyzer, effectName, engine);
+  }
+
   render(): void {
     // Get parameters
     const particleCount = this.parameters.particleCount || 100;
@@ -354,12 +398,20 @@ class ParticleEffect extends VisualEffect {
     const bands = this.analyzer.getFrequencyBands();
     const beat = this.analyzer.detectBeat();
 
-    // Clear with trail effect
+    // Clear with trail effect using background color
+    const bgColor = this.engine.getBackgroundColor();
     if (trail) {
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      if (bgColor.startsWith('#')) {
+        const r = parseInt(bgColor.slice(1, 3), 16);
+        const g = parseInt(bgColor.slice(3, 5), 16);
+        const b = parseInt(bgColor.slice(5, 7), 16);
+        this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.05)`;
+      } else {
+        this.ctx.fillStyle = bgColor;
+      }
       this.ctx.fillRect(0, 0, this.width, this.height);
     } else {
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+      this.ctx.fillStyle = bgColor;
       this.ctx.fillRect(0, 0, this.width, this.height);
     }
 
@@ -452,6 +504,10 @@ class ParticleEffect extends VisualEffect {
 class GeometricEffect extends VisualEffect {
   private time = 0;
 
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string, engine: VisualEngine) {
+    super(ctx, width, height, analyzer, effectName, engine);
+  }
+
   render(): void {
     this.time += 0.016; // ~60fps
 
@@ -465,9 +521,8 @@ class GeometricEffect extends VisualEffect {
     const bands = this.analyzer.getFrequencyBands();
     const beat = this.analyzer.detectBeat();
 
-    // Clear canvas
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    this.ctx.fillRect(0, 0, this.width, this.height);
+    // Clear canvas with background color
+    this.clear();
 
     // Set base color
     this.ctx.strokeStyle = color;
@@ -614,6 +669,10 @@ class GradientEffect extends VisualEffect {
   private time = 0;
   private waveOffset = 0;
 
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string, engine: VisualEngine) {
+    super(ctx, width, height, analyzer, effectName, engine);
+  }
+
   render(): void {
     this.time += 0.016;
 
@@ -630,8 +689,8 @@ class GradientEffect extends VisualEffect {
     // Update wave offset
     this.waveOffset += speed * 2;
 
-    // Clear canvas
-    this.ctx.fillStyle = 'black';
+    // Clear canvas with background color
+    this.ctx.fillStyle = this.engine.getBackgroundColor();
     this.ctx.fillRect(0, 0, this.width, this.height);
 
     // Create base gradient
@@ -797,8 +856,8 @@ class ThreeDEffect extends VisualEffect {
   private centerX: number;
   private centerY: number;
 
-  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string) {
-    super(ctx, width, height, analyzer, effectName);
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string, engine: VisualEngine) {
+    super(ctx, width, height, analyzer, effectName, engine);
     this.centerX = width / 2;
     this.centerY = height / 2;
     this.initializeObjects();
@@ -845,9 +904,8 @@ class ThreeDEffect extends VisualEffect {
     const bands = this.analyzer.getFrequencyBands();
     const beat = this.analyzer.detectBeat();
 
-    // Clear canvas with fade effect
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    this.ctx.fillRect(0, 0, this.width, this.height);
+    // Clear canvas with fade effect using background color
+    this.clear();
 
     // Audio-reactive perspective
     this.perspective = 800 + bands.bass * 400;

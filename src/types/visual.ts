@@ -21,6 +21,7 @@ export interface VisualEffectState {
   parameters: EffectParameter;
   canvas: HTMLCanvasElement | null;
   context: CanvasRenderingContext2D | null;
+  backgroundColor: string;
 }
 
 export interface RenderingOptions {

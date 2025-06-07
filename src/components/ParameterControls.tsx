@@ -1,13 +1,26 @@
 import { ParameterDefinition, effectParameterManager } from '../modules/visual/EffectParameters';
+import { useState, useEffect } from 'react';
 
 interface ParameterControlsProps {
   effectName: string;
   onParameterChange?: (paramName: string, value: any) => void;
+  visualEngine?: any;
 }
 
-export function ParameterControls({ effectName, onParameterChange }: ParameterControlsProps) {
+export function ParameterControls({ effectName, onParameterChange, visualEngine }: ParameterControlsProps) {
   const definitions = effectParameterManager.getParameterDefinitions(effectName);
   const parameters = effectParameterManager.getParameters(effectName);
+  const [backgroundColor, setBackgroundColor] = useState('#000000');
+
+  useEffect(() => {
+    // Load background color from localStorage or VisualEngine
+    const savedColor = localStorage.getItem('audioVibe_backgroundColor');
+    if (savedColor) {
+      setBackgroundColor(savedColor);
+    } else if (visualEngine && visualEngine.getBackgroundColor) {
+      setBackgroundColor(visualEngine.getBackgroundColor());
+    }
+  }, [visualEngine]);
 
   const handleParameterChange = (paramName: string, value: any) => {
     effectParameterManager.setParameter(effectName, paramName, value);
@@ -16,6 +29,13 @@ export function ParameterControls({ effectName, onParameterChange }: ParameterCo
     // Save all current parameters to localStorage for export
     const allParams = effectParameterManager.getParameters(effectName);
     localStorage.setItem('effectParameters', JSON.stringify(allParams));
+  };
+
+  const handleBackgroundColorChange = (color: string) => {
+    setBackgroundColor(color);
+    if (visualEngine && visualEngine.setBackgroundColor) {
+      visualEngine.setBackgroundColor(color);
+    }
   };
 
   const renderControl = (definition: ParameterDefinition) => {
@@ -92,6 +112,23 @@ export function ParameterControls({ effectName, onParameterChange }: ParameterCo
   return (
     <div className="parameter-controls">
       <h3>Effect Parameters</h3>
+      
+      {/* Background Color Control */}
+      <div className="parameter">
+        <div className="parameter-header">
+          <label className="parameter-label">Background Color</label>
+        </div>
+        <div className="parameter-control">
+          <input
+            type="color"
+            value={backgroundColor}
+            onChange={(e) => handleBackgroundColorChange(e.target.value)}
+            title="Background Color"
+          />
+        </div>
+        <p className="parameter-description">Set the background color for the video</p>
+      </div>
+      
       <div className="parameters-grid">
         {definitions.map(definition => (
           <div key={definition.name} className="parameter">
