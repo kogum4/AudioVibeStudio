@@ -95,7 +95,6 @@ export function EditorScreen() {
             <button 
               className={`effect-btn ${currentEffect === '3d' ? 'active' : ''}`}
               onClick={() => handleEffectChange('3d')}
-              disabled
             >
               3D
             </button>
