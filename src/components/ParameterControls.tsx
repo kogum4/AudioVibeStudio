@@ -12,6 +12,10 @@ export function ParameterControls({ effectName, onParameterChange }: ParameterCo
   const handleParameterChange = (paramName: string, value: any) => {
     effectParameterManager.setParameter(effectName, paramName, value);
     onParameterChange?.(paramName, value);
+    
+    // Save all current parameters to localStorage for export
+    const allParams = effectParameterManager.getParameters(effectName);
+    localStorage.setItem('effectParameters', JSON.stringify(allParams));
   };
 
   const renderControl = (definition: ParameterDefinition) => {

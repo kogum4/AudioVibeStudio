@@ -29,6 +29,26 @@ export function ExportScreen() {
     // Initialize visual engine for export
     if (canvasRef.current && !visualEngineRef.current) {
       visualEngineRef.current = new VisualEngine(canvasRef.current);
+      
+      // Copy current effect settings from localStorage
+      const savedEffect = localStorage.getItem('currentEffect');
+      const savedParams = localStorage.getItem('effectParameters');
+      
+      if (savedEffect) {
+        visualEngineRef.current.setCurrentEffect(savedEffect);
+      }
+      
+      if (savedParams) {
+        try {
+          const params = JSON.parse(savedParams);
+          Object.entries(params).forEach(([key, value]) => {
+            visualEngineRef.current?.setEffectParameter(key, value);
+          });
+        } catch (error) {
+          console.error('Failed to parse effect parameters:', error);
+        }
+      }
+      
       videoExporterRef.current = new VideoExporter(canvasRef.current, visualEngineRef.current);
       
       videoExporterRef.current.setProgressCallback((progress) => {

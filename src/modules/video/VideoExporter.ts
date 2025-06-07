@@ -120,7 +120,8 @@ export class VideoExporter {
     this.audioManager.stop();
     this.audioManager.play();
     
-    // Start visual engine
+    // Start visual engine with audio playing state
+    this.visualEngine.setAudioPlaying(true);
     this.visualEngine.start();
     
     // Start recording
@@ -166,6 +167,7 @@ export class VideoExporter {
 
     this.mediaRecorder.stop();
     this.audioManager.stop();
+    this.visualEngine.setAudioPlaying(false);
     this.visualEngine.stop();
     this.isRecording = false;
   }

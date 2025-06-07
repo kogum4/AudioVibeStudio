@@ -76,6 +76,9 @@ export function EditorScreen() {
   const handleEffectChange = (effect: string) => {
     setCurrentEffect(effect);
     visualEngineRef.current?.setEffect(effect);
+    
+    // Save current effect to localStorage for export
+    localStorage.setItem('currentEffect', effect);
   };
 
   const handleExport = () => {
