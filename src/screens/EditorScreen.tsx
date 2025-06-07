@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AudioContextManager } from '../modules/audio/AudioContext';
 import { VisualEngine } from '../modules/visual/VisualEngine';
+import { ParameterControls } from '../components/ParameterControls';
 
 export function EditorScreen() {
   const navigate = useNavigate();
@@ -76,21 +77,18 @@ export function EditorScreen() {
             <button 
               className={`effect-btn ${currentEffect === 'particles' ? 'active' : ''}`}
               onClick={() => handleEffectChange('particles')}
-              disabled
             >
               Particles
             </button>
             <button 
               className={`effect-btn ${currentEffect === 'geometric' ? 'active' : ''}`}
               onClick={() => handleEffectChange('geometric')}
-              disabled
             >
               Geometric
             </button>
             <button 
               className={`effect-btn ${currentEffect === 'gradient' ? 'active' : ''}`}
               onClick={() => handleEffectChange('gradient')}
-              disabled
             >
               Gradient
             </button>
@@ -103,17 +101,12 @@ export function EditorScreen() {
             </button>
           </div>
           
-          <div className="parameter-controls">
-            <h3>Effect Parameters</h3>
-            <div className="parameter">
-              <label>Intensity</label>
-              <input type="range" min="0" max="100" defaultValue="50" />
-            </div>
-            <div className="parameter">
-              <label>Color</label>
-              <input type="color" defaultValue="#00ffff" />
-            </div>
-          </div>
+          <ParameterControls 
+            effectName={currentEffect} 
+            onParameterChange={(paramName, value) => {
+              console.log(`Parameter ${paramName} changed to:`, value);
+            }}
+          />
           
           <button className="export-btn" onClick={handleExport}>Export Video</button>
         </div>

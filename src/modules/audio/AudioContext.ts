@@ -7,6 +7,7 @@ export class AudioContextManager {
   private isPlaying = false;
   private startTime = 0;
   private pauseTime = 0;
+  private mediaStreamDestination: MediaStreamAudioDestinationNode | null = null;
 
   private constructor() {}
 
@@ -23,6 +24,7 @@ export class AudioContextManager {
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 2048;
       this.analyser.smoothingTimeConstant = 0.8;
+      this.mediaStreamDestination = this.audioContext.createMediaStreamDestination();
     }
   }
 
@@ -42,6 +44,7 @@ export class AudioContextManager {
     this.source.buffer = this.buffer;
     this.source.connect(this.analyser!);
     this.analyser!.connect(this.audioContext.destination);
+    this.analyser!.connect(this.mediaStreamDestination!);
 
     const offset = this.pauseTime;
     this.source.start(0, offset);
@@ -105,6 +108,10 @@ export class AudioContextManager {
 
   getIsPlaying(): boolean {
     return this.isPlaying;
+  }
+
+  getAudioStream(): MediaStream | null {
+    return this.mediaStreamDestination?.stream || null;
   }
 
   dispose(): void {
