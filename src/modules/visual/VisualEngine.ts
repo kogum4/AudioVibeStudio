@@ -1,5 +1,7 @@
 import { AudioAnalyzer } from '../audio/AudioAnalyzer';
 import { effectParameterManager, EffectParameter } from './EffectParameters';
+import { TextRenderer } from './TextRenderer';
+import { TextOverlay } from '../../types/visual';
 
 export abstract class VisualEffect {
   protected ctx: CanvasRenderingContext2D;
@@ -39,6 +41,8 @@ export class VisualEngine {
   private animationId: number | null = null;
   private isRunning = false;
   private isAudioPlaying = false;
+  private textRenderer: TextRenderer;
+  private startTime = Date.now();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -48,6 +52,7 @@ export class VisualEngine {
     }
     this.ctx = ctx;
     this.analyzer = new AudioAnalyzer();
+    this.textRenderer = new TextRenderer(ctx, this.canvas.width, this.canvas.height, this.analyzer);
     
     // Set canvas size
     this.resize();
@@ -67,6 +72,11 @@ export class VisualEngine {
     this.canvas.height = 1920;
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
+    
+    // Update text renderer size
+    if (this.textRenderer) {
+      this.textRenderer = new TextRenderer(this.ctx, this.canvas.width, this.canvas.height, this.analyzer);
+    }
   }
 
   setEffect(effectType: string): void {
@@ -93,6 +103,31 @@ export class VisualEngine {
 
   getParameterManager() {
     return effectParameterManager;
+  }
+
+  // Text overlay methods
+  addTextOverlay(overlay: TextOverlay): void {
+    this.textRenderer.addTextOverlay(overlay);
+  }
+
+  removeTextOverlay(id: string): void {
+    this.textRenderer.removeTextOverlay(id);
+  }
+
+  updateTextOverlay(id: string, updates: Partial<TextOverlay>): void {
+    this.textRenderer.updateTextOverlay(id, updates);
+  }
+
+  getTextOverlays(): TextOverlay[] {
+    return this.textRenderer.getTextOverlays();
+  }
+
+  clearAllTextOverlays(): void {
+    this.textRenderer.clearAllOverlays();
+  }
+
+  getTextRenderer(): TextRenderer {
+    return this.textRenderer;
   }
 
   setAudioPlaying(playing: boolean): void {
@@ -149,6 +184,10 @@ export class VisualEngine {
     } else {
       console.log('No current effect set');
     }
+
+    // Always render text overlays
+    const currentTime = Date.now() - this.startTime;
+    this.textRenderer.render(currentTime);
     
     this.animationId = requestAnimationFrame(() => this.animate());
   }

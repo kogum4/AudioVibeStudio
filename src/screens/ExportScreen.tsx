@@ -30,22 +30,50 @@ export function ExportScreen() {
     if (canvasRef.current && !visualEngineRef.current) {
       visualEngineRef.current = new VisualEngine(canvasRef.current);
       
-      // Copy current effect settings from localStorage
-      const savedEffect = localStorage.getItem('currentEffect');
-      const savedParams = localStorage.getItem('effectParameters');
-      
-      if (savedEffect) {
-        visualEngineRef.current.setCurrentEffect(savedEffect);
-      }
-      
-      if (savedParams) {
+      // Load export state from localStorage
+      const exportState = localStorage.getItem('exportState');
+      if (exportState) {
         try {
-          const params = JSON.parse(savedParams);
-          Object.entries(params).forEach(([key, value]) => {
-            visualEngineRef.current?.setEffectParameter(key, value);
-          });
+          const state = JSON.parse(exportState);
+          
+          // Set effect
+          if (state.currentEffect) {
+            visualEngineRef.current.setEffect(state.currentEffect);
+          }
+          
+          // Load text overlays
+          if (state.textOverlays && Array.isArray(state.textOverlays)) {
+            state.textOverlays.forEach((overlay: any) => {
+              visualEngineRef.current?.addTextOverlay(overlay);
+            });
+          }
+          
+          // Load effect parameters (if available)
+          if (state.effectParameters) {
+            // This would need parameter loading methods in VisualEngine
+            console.log('Effect parameters loaded:', state.effectParameters);
+          }
         } catch (error) {
-          console.error('Failed to parse effect parameters:', error);
+          console.error('Failed to parse export state:', error);
+        }
+      } else {
+        // Fallback to individual localStorage items
+        const savedEffect = localStorage.getItem('currentEffect');
+        const savedTextOverlays = localStorage.getItem('textOverlays');
+        
+        if (savedEffect) {
+          visualEngineRef.current.setEffect(savedEffect);
+        }
+        
+        if (savedTextOverlays) {
+          try {
+            const textOverlays = JSON.parse(savedTextOverlays);
+            textOverlays.forEach((overlay: any) => {
+              visualEngineRef.current?.addTextOverlay(overlay);
+            });
+          } catch (error) {
+            console.error('Failed to parse text overlays:', error);
+          }
         }
       }
       

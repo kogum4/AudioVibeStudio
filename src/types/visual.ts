@@ -105,3 +105,46 @@ export interface PerformanceMetrics {
   memoryUsage: number;
   droppedFrames: number;
 }
+
+export interface TextOverlay {
+  id: string;
+  text: string;
+  position: Point2D;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  opacity: number;
+  rotation: number;
+  animation: TextAnimation;
+  timing: TextTiming;
+  style: TextStyle;
+}
+
+export interface TextAnimation {
+  type: 'none' | 'fade' | 'slide' | 'bounce' | 'pulse' | 'typewriter' | 'wave';
+  duration: number;
+  delay: number;
+  easing: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+  audioReactive: boolean;
+}
+
+export interface TextTiming {
+  startTime: number;
+  endTime: number;
+  loop: boolean;
+  autoPosition: boolean;
+}
+
+export interface TextStyle {
+  bold: boolean;
+  italic: boolean;
+  stroke: boolean;
+  strokeWidth: number;
+  strokeColor: string;
+  shadow: boolean;
+  shadowBlur: number;
+  shadowColor: string;
+  shadowOffset: Point2D;
+  gradient: boolean;
+  gradientColors: string[];
+}
