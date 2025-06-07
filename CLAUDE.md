@@ -7,25 +7,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **AudioVibe Studio** - A browser-based audio-reactive video generation tool that creates 9:16 vertical videos with visual effects synchronized to uploaded audio files.
 
 ### Current State
-This is a newly initialized TypeScript/Node.js project with only the specification document. The project needs to be set up from scratch.
+The project has been initialized with the following setup completed:
+- ✅ React + TypeScript + Vite development environment
+- ✅ ESLint + Prettier configuration for code quality
+- ✅ Jest + React Testing Library for testing
+- ✅ Basic project structure and entry points
+- ✅ Dark mode UI theme configuration
 
-## Initial Setup Commands
+## Installed Dependencies
 
-Since this project lacks basic configuration files, you'll need to initialize it:
+### Core Dependencies
+- React 19.1.0 - UI library
+- React DOM 19.1.0 - React rendering for web
+- Vite 6.3.5 - Build tool and dev server
 
-```bash
-# Initialize npm project
-npm init -y
-
-# Install TypeScript and basic dependencies
-npm install --save-dev typescript @types/node
-
-# Initialize TypeScript configuration
-npx tsc --init
-
-# Install development tools
-npm install --save-dev eslint prettier jest @types/jest ts-jest
-```
+### Development Dependencies
+- TypeScript 5.8.3 - Type safety
+- @vitejs/plugin-react - React support for Vite
+- ESLint + plugins - Code linting
+- Prettier - Code formatting
+- Jest + React Testing Library - Testing framework
+- Various @types packages for TypeScript support
 
 ## Architecture Guidelines
 
@@ -41,7 +43,9 @@ Based on the specification, the project should be structured as a client-side we
 - **Audio**: Web Audio API
 - **Graphics**: Canvas API / WebGL
 - **Video**: MediaRecorder API
-- **UI Framework**: To be decided (React/Vue.js/Vanilla JS)
+- **UI Framework**: React 19 with TypeScript
+- **Build Tool**: Vite
+- **Styling**: CSS with CSS Variables for theming
 
 ### Key Constraints
 - Must support 9:16 vertical video format (1080×1920px)
@@ -70,26 +74,26 @@ Based on the specification, the project should be structured as a client-side we
 ## Implementation Task List
 
 ### 1. Project Setup & Configuration
-- [ ] Initialize npm project with package.json
-- [ ] Configure TypeScript (tsconfig.json)
-- [ ] Set up build system (Vite/Webpack)
-- [ ] Configure ESLint and Prettier
-- [ ] Set up Jest for testing
-- [ ] Create project directory structure
-- [ ] Set up Git with .gitignore
+- [x] Initialize npm project with package.json
+- [x] Configure TypeScript (tsconfig.json)
+- [x] Set up build system (Vite)
+- [x] Configure ESLint and Prettier
+- [x] Set up Jest for testing
+- [x] Create project directory structure
+- [x] Set up Git with .gitignore
 
 ### 2. Development Environment
-- [ ] Install core dependencies (React/Vue or vanilla setup)
-- [ ] Set up hot module replacement
-- [ ] Configure development server
-- [ ] Set up CSS preprocessing (if needed)
-- [ ] Configure path aliases
+- [x] Install core dependencies (React with TypeScript)
+- [x] Set up hot module replacement (Vite HMR)
+- [x] Configure development server (Vite dev server on port 3000)
+- [x] Set up CSS with CSS Variables for theming
+- [x] Configure path aliases (@/, @components/, @modules/, @utils/, @types/)
 
 ### 3. Core Infrastructure
-- [ ] Create main application entry point
-- [ ] Set up routing (if using SPA framework)
+- [x] Create main application entry point (src/main.tsx, src/App.tsx)
+- [ ] Set up routing (React Router)
 - [ ] Implement base layout components
-- [ ] Create global styles and theme (dark mode)
+- [x] Create global styles and theme (dark mode with CSS variables)
 - [ ] Set up responsive design utilities
 
 ### 4. Audio Module Implementation
@@ -192,7 +196,7 @@ Based on the specification, the project should be structured as a client-side we
 
 ```bash
 # Development
-npm run dev          # Start development server
+npm run dev          # Start development server (http://localhost:3000)
 npm run build        # Build for production
 npm run preview      # Preview production build
 
@@ -207,7 +211,37 @@ npm run lint:fix    # Fix ESLint issues
 npm run format      # Format with Prettier
 npm run typecheck   # Run TypeScript compiler checks
 
-# Build & Deploy
+# Build & Deploy (to be implemented)
 npm run build:analyze # Analyze bundle size
 npm run deploy      # Deploy to hosting service
+```
+
+## Project Structure
+
+```
+audiovibe-studio/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── modules/        # Core functionality modules
+│   │   ├── audio/     # Audio processing components
+│   │   ├── visual/    # Visual effects and rendering
+│   │   └── video/     # Video export functionality
+│   ├── screens/       # Main application screens
+│   ├── hooks/         # Custom React hooks
+│   ├── utils/         # Utility functions
+│   ├── types/         # TypeScript type definitions
+│   ├── styles/        # Global styles and themes
+│   ├── App.tsx        # Main application component
+│   ├── App.test.tsx   # App component tests
+│   ├── main.tsx       # Application entry point
+│   ├── setupTests.ts  # Test setup configuration
+│   └── vite-env.d.ts  # Vite environment types
+├── index.html         # HTML entry point
+├── package.json       # Project dependencies and scripts
+├── tsconfig.json      # TypeScript configuration
+├── vite.config.ts     # Vite build configuration
+├── jest.config.js     # Jest test configuration
+├── .eslintrc.json     # ESLint configuration
+├── .prettierrc        # Prettier configuration
+└── .gitignore         # Git ignore patterns
 ```
