@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AudioContextManager } from '../modules/audio/AudioContext';
 import { VisualEngine } from '../modules/visual/VisualEngine';
+import { effectParameterManager } from '../modules/visual/EffectParameters';
 import { ParameterControls } from '../components/ParameterControls';
 import { TextOverlayControls } from '../components/TextOverlayControls';
 import { Timeline } from '../components/Timeline';
@@ -249,12 +250,33 @@ export function EditorScreen() {
       handleEffectChange(preset.settings.currentEffect);
     }
     
+    // Load background color
+    if (preset.settings.backgroundColor) {
+      localStorage.setItem('audioVibe_backgroundColor', preset.settings.backgroundColor);
+      if (visualEngineRef.current) {
+        visualEngineRef.current.setBackgroundColor(preset.settings.backgroundColor);
+      }
+    }
+    
     // Load effect parameters
     if (preset.settings.effectParameters && visualEngineRef.current) {
-      Object.entries(preset.settings.effectParameters).forEach(([, ]) => {
-        // This would need to be implemented in VisualEngine
-        // visualEngineRef.current?.setEffectParameters(effectName, params);
+      // Apply parameters for each effect
+      Object.entries(preset.settings.effectParameters).forEach(([effectName, params]) => {
+        if (params && typeof params === 'object') {
+          // Set all parameters for this effect
+          effectParameterManager.setParameters(effectName, params as any);
+          
+          // If this is the current effect, save to localStorage for export
+          if (effectName === preset.settings.currentEffect) {
+            localStorage.setItem(`effectParams_${effectName}`, JSON.stringify(params));
+          }
+        }
       });
+      
+      // Force a render after loading parameters
+      if (!visualEngineRef.current.getIsRunning()) {
+        visualEngineRef.current.start();
+      }
     }
     
     // Load text overlays
@@ -411,7 +433,13 @@ export function EditorScreen() {
         isOpen={isPresetManagerOpen}
         onClose={() => setIsPresetManagerOpen(false)}
         currentEffect={currentEffect}
-        effectParameters={{}}
+        effectParameters={{
+          waveform: effectParameterManager.getParameters('waveform'),
+          particles: effectParameterManager.getParameters('particles'),
+          geometric: effectParameterManager.getParameters('geometric'),
+          gradient: effectParameterManager.getParameters('gradient'),
+          '3d': effectParameterManager.getParameters('3d')
+        }}
         textOverlays={textOverlays}
         onLoadPreset={handleLoadPreset}
       />

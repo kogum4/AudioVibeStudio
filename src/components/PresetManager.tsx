@@ -90,7 +90,8 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
       settings: {
         currentEffect,
         effectParameters,
-        textOverlays
+        textOverlays,
+        backgroundColor: localStorage.getItem('audioVibe_backgroundColor') || '#000000'
       },
       tags: saveForm.tags,
       version: '1.0.0'

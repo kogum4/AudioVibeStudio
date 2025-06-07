@@ -11,6 +11,7 @@ export interface ProjectPreset {
     currentEffect: string;
     effectParameters: { [effectName: string]: EffectParameter };
     textOverlays: TextOverlay[];
+    backgroundColor?: string;
     audioSettings?: {
       volume: number;
       playbackRate: number;
