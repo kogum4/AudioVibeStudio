@@ -114,9 +114,9 @@ export class TextRenderer {
       this.ctx.lineWidth = style.strokeWidth + (beat.isBeat ? beat.intensity * 2 : 0);
     }
 
-    // Set shadow
+    // Set shadow - removed audio reactivity to prevent jittering
     if (style.shadow) {
-      this.ctx.shadowBlur = style.shadowBlur + (bands.bass * 10);
+      this.ctx.shadowBlur = style.shadowBlur;
       this.ctx.shadowColor = style.shadowColor;
       this.ctx.shadowOffsetX = style.shadowOffset.x;
       this.ctx.shadowOffsetY = style.shadowOffset.y;
@@ -132,9 +132,8 @@ export class TextRenderer {
     const colors = overlay.style.gradientColors;
     colors.forEach((color, index) => {
       const position = index / (colors.length - 1);
-      // Add audio-reactive color shifting
-      const audioShift = bands.mid * 0.1;
-      gradient.addColorStop(Math.min(1, Math.max(0, position + audioShift)), color);
+      // Removed audio-reactive color shifting to prevent gradient jittering
+      gradient.addColorStop(position, color);
     });
 
     return gradient;
@@ -183,7 +182,7 @@ export class TextRenderer {
       y = this.height / 2;
     }
 
-    // Apply animation positioning
+    // Apply animation positioning only for specific animation types
     switch (animation.type) {
       case 'slide':
         const slideDistance = this.height * 0.5;
@@ -194,22 +193,16 @@ export class TextRenderer {
         y -= bounceOffset;
         break;
       case 'wave':
-        const waveOffset = Math.sin(this.animationTime * 2 + progress * Math.PI * 4) * 20;
-        x += waveOffset;
+        // Only apply wave animation to specific wave text, not position
+        if (animation.type === 'wave') {
+          const waveOffset = Math.sin(this.animationTime * 2 + progress * Math.PI * 4) * 10;
+          x += waveOffset;
+        }
         break;
     }
 
-    // Audio-reactive positioning
-    if (animation.audioReactive) {
-      x += Math.sin(this.animationTime + bands.bass * Math.PI) * bands.treble * 30;
-      y += Math.cos(this.animationTime + bands.mid * Math.PI) * bands.bass * 20;
-      
-      if (beat.isBeat) {
-        const beatOffset = beat.intensity * 10;
-        x += (Math.random() - 0.5) * beatOffset;
-        y += (Math.random() - 0.5) * beatOffset;
-      }
-    }
+    // Disable audio-reactive positioning to prevent jittering
+    // Audio reactivity is now handled only in scaling and effects, not position
 
     return { x, y };
   }
@@ -224,18 +217,20 @@ export class TextRenderer {
         opacity *= progress;
         break;
       case 'pulse':
-        const pulseOpacity = 0.5 + 0.5 * Math.sin(this.animationTime * 4);
+        // Reduce pulse frequency for smoother animation
+        const pulseOpacity = 0.8 + 0.2 * Math.sin(this.animationTime * 2);
         opacity *= pulseOpacity;
         break;
     }
 
-    // Audio-reactive opacity
+    // Reduced audio-reactive opacity for stability
     if (animation.audioReactive) {
-      const audioOpacity = 0.7 + (bands.mid + bands.treble) * 0.3;
-      opacity *= audioOpacity;
+      // Smooth out audio reactive opacity to prevent flickering
+      const smoothAudioOpacity = 0.9 + (bands.mid + bands.treble) * 0.1;
+      opacity *= smoothAudioOpacity;
       
       if (beat.isBeat) {
-        opacity = Math.min(1, opacity + beat.intensity * 0.3);
+        opacity = Math.min(1, opacity + beat.intensity * 0.1);
       }
     }
 
@@ -294,9 +289,9 @@ export class TextRenderer {
       
       this.ctx.save();
       
-      // Wave offset
-      const waveY = Math.sin(this.animationTime * 3 + i * 0.5) * (20 + bands.treble * 30);
-      const beatScale = beat.isBeat ? 1 + beat.intensity * 0.3 : 1;
+      // Wave offset - reduced for stability
+      const waveY = Math.sin(this.animationTime * 2 + i * 0.3) * (15 + bands.treble * 10);
+      const beatScale = beat.isBeat ? 1 + beat.intensity * 0.1 : 1;
       
       this.ctx.translate(currentX + charWidth / 2, waveY);
       this.ctx.scale(beatScale, beatScale);
@@ -313,8 +308,8 @@ export class TextRenderer {
   }
 
   private renderStaticText(text: string, style: any, bands: any, beat: any): void {
-    // Audio-reactive scaling
-    const audioScale = 1 + (beat.isBeat ? beat.intensity * 0.2 : 0) + (bands.bass * 0.1);
+    // Reduced audio-reactive scaling for stability
+    const audioScale = 1 + (beat.isBeat ? beat.intensity * 0.05 : 0) + (bands.bass * 0.02);
     
     this.ctx.save();
     this.ctx.scale(audioScale, audioScale);
@@ -343,7 +338,7 @@ export class TextRenderer {
         duration: 1000,
         delay: 0,
         easing: 'ease-in-out',
-        audioReactive: true
+        audioReactive: false
       },
       timing: {
         startTime: 0,
