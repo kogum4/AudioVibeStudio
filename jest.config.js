@@ -26,6 +26,7 @@ module.exports = {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
+  setupFiles: ['<rootDir>/jest.setup.js'],
   globals: {
     'ts-jest': {
       tsconfig: {

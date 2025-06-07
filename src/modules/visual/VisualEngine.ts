@@ -80,7 +80,7 @@ export class VisualEngine {
         this.currentEffect = new GradientEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'gradient');
         break;
       case '3d':
-        // TODO: Implement 3D effect
+        this.currentEffect = new ThreeDEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, '3d');
         break;
       default:
         this.currentEffect = new WaveformEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'waveform');
@@ -671,5 +671,396 @@ class GradientEffect extends VisualEffect {
     const b = Math.round(b1 + (b2 - b1) * ratio);
     
     return `rgb(${r}, ${g}, ${b})`;
+  }
+}
+
+interface Object3D {
+  x: number;
+  y: number;
+  z: number;
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+  scale: number;
+  type: 'cube' | 'sphere' | 'pyramid' | 'torus';
+  color: string;
+  velocity: {
+    x: number;
+    y: number;
+    z: number;
+    rotX: number;
+    rotY: number;
+    rotZ: number;
+  };
+}
+
+class ThreeDEffect extends VisualEffect {
+  private objects: Object3D[] = [];
+  private time = 0;
+  private perspective = 800;
+  private centerX: number;
+  private centerY: number;
+
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string) {
+    super(ctx, width, height, analyzer, effectName);
+    this.centerX = width / 2;
+    this.centerY = height / 2;
+    this.initializeObjects();
+  }
+
+  private initializeObjects(): void {
+    const objectTypes: ('cube' | 'sphere' | 'pyramid' | 'torus')[] = ['cube', 'sphere', 'pyramid', 'torus'];
+    
+    for (let i = 0; i < 12; i++) {
+      const object: Object3D = {
+        x: (Math.random() - 0.5) * 400,
+        y: (Math.random() - 0.5) * 400,
+        z: Math.random() * 500 + 200,
+        rotationX: Math.random() * Math.PI * 2,
+        rotationY: Math.random() * Math.PI * 2,
+        rotationZ: Math.random() * Math.PI * 2,
+        scale: 20 + Math.random() * 40,
+        type: objectTypes[Math.floor(Math.random() * objectTypes.length)],
+        color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+        velocity: {
+          x: (Math.random() - 0.5) * 2,
+          y: (Math.random() - 0.5) * 2,
+          z: (Math.random() - 0.5) * 2,
+          rotX: (Math.random() - 0.5) * 0.1,
+          rotY: (Math.random() - 0.5) * 0.1,
+          rotZ: (Math.random() - 0.5) * 0.1,
+        }
+      };
+      this.objects.push(object);
+    }
+  }
+
+  render(): void {
+    this.time += 0.016;
+
+    // Get parameters
+    const objectType = this.parameters.objectType || 'mixed';
+    const color = this.parameters.color || null;
+    const rotationSpeed = this.parameters.rotationSpeed || 1;
+    const objectCount = this.parameters.objectCount || 8;
+    const movement = this.parameters.movement !== false;
+
+    const bands = this.analyzer.getFrequencyBands();
+    const beat = this.analyzer.detectBeat();
+
+    // Clear canvas with fade effect
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    this.ctx.fillRect(0, 0, this.width, this.height);
+
+    // Audio-reactive perspective
+    this.perspective = 800 + bands.bass * 400;
+
+    // Limit object count
+    while (this.objects.length > objectCount) {
+      this.objects.pop();
+    }
+    while (this.objects.length < objectCount) {
+      this.addRandomObject();
+    }
+
+    // Update and render objects
+    this.objects.forEach((obj, index) => {
+      this.updateObject(obj, bands, beat, rotationSpeed, movement);
+      this.renderObject(obj, bands, beat, color, objectType);
+    });
+
+    // Add audio-reactive lighting effects
+    this.renderLightingEffects(bands, beat);
+  }
+
+  private addRandomObject(): void {
+    const objectTypes: ('cube' | 'sphere' | 'pyramid' | 'torus')[] = ['cube', 'sphere', 'pyramid', 'torus'];
+    
+    const object: Object3D = {
+      x: (Math.random() - 0.5) * 400,
+      y: (Math.random() - 0.5) * 400,
+      z: Math.random() * 500 + 200,
+      rotationX: Math.random() * Math.PI * 2,
+      rotationY: Math.random() * Math.PI * 2,
+      rotationZ: Math.random() * Math.PI * 2,
+      scale: 20 + Math.random() * 40,
+      type: objectTypes[Math.floor(Math.random() * objectTypes.length)],
+      color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+      velocity: {
+        x: (Math.random() - 0.5) * 2,
+        y: (Math.random() - 0.5) * 2,
+        z: (Math.random() - 0.5) * 2,
+        rotX: (Math.random() - 0.5) * 0.1,
+        rotY: (Math.random() - 0.5) * 0.1,
+        rotZ: (Math.random() - 0.5) * 0.1,
+      }
+    };
+    this.objects.push(object);
+  }
+
+  private updateObject(obj: Object3D, bands: any, beat: any, rotationSpeed: number, movement: boolean): void {
+    // Audio-reactive rotation
+    const audioRotationMultiplier = 1 + (bands.treble + bands.highMid) * 2;
+    obj.rotationX += obj.velocity.rotX * rotationSpeed * audioRotationMultiplier;
+    obj.rotationY += obj.velocity.rotY * rotationSpeed * audioRotationMultiplier;
+    obj.rotationZ += obj.velocity.rotZ * rotationSpeed * audioRotationMultiplier;
+
+    // Movement
+    if (movement) {
+      obj.x += obj.velocity.x * (1 + bands.lowMid);
+      obj.y += obj.velocity.y * (1 + bands.mid);
+      obj.z += obj.velocity.z * (1 + bands.bass * 0.5);
+
+      // Boundary checks
+      if (Math.abs(obj.x) > 300) obj.velocity.x *= -1;
+      if (Math.abs(obj.y) > 300) obj.velocity.y *= -1;
+      if (obj.z < 100 || obj.z > 800) obj.velocity.z *= -1;
+    }
+
+    // Beat response
+    if (beat.isBeat) {
+      obj.scale *= 1.2 + beat.intensity * 0.3;
+      setTimeout(() => {
+        obj.scale /= 1.2 + beat.intensity * 0.3;
+      }, 100);
+    }
+
+    // Audio-reactive positioning
+    const audioOffset = Math.sin(this.time + bands.bass * Math.PI) * 50;
+    obj.x += Math.cos(this.time * 0.5) * audioOffset * 0.1;
+    obj.y += Math.sin(this.time * 0.3) * audioOffset * 0.1;
+  }
+
+  private renderObject(obj: Object3D, bands: any, beat: any, paramColor: string | null, objectType: string): void {
+    // 3D to 2D projection
+    const projected = this.project3D(obj);
+    if (!projected) return;
+
+    const { x, y, scale } = projected;
+
+    // Audio-reactive size
+    const audioScale = scale * (1 + bands.bass * 0.5 + (beat.isBeat ? beat.intensity * 0.5 : 0));
+
+    // Color selection
+    const renderColor = paramColor || obj.color;
+    
+    // Audio-reactive color intensity
+    const colorIntensity = 0.6 + (bands.treble + bands.highMid) * 0.4;
+    let finalColor: string;
+    
+    if (renderColor.startsWith('#')) {
+      // Convert hex to rgba with audio-reactive alpha
+      const r = parseInt(renderColor.slice(1, 3), 16);
+      const g = parseInt(renderColor.slice(3, 5), 16);
+      const b = parseInt(renderColor.slice(5, 7), 16);
+      finalColor = `rgba(${r}, ${g}, ${b}, ${colorIntensity})`;
+    } else {
+      finalColor = renderColor;
+    }
+
+    this.ctx.fillStyle = finalColor;
+    this.ctx.strokeStyle = finalColor;
+    this.ctx.lineWidth = 2 + bands.mid * 4;
+
+    // Render based on type
+    const typeToRender = objectType === 'mixed' ? obj.type : objectType;
+    
+    switch (typeToRender) {
+      case 'cube':
+        this.renderCube(x, y, audioScale, obj);
+        break;
+      case 'sphere':
+        this.renderSphere(x, y, audioScale, obj);
+        break;
+      case 'pyramid':
+        this.renderPyramid(x, y, audioScale, obj);
+        break;
+      case 'torus':
+        this.renderTorus(x, y, audioScale, obj);
+        break;
+      default:
+        this.renderCube(x, y, audioScale, obj);
+    }
+
+    // Add glow effect for beats
+    if (beat.isBeat) {
+      this.ctx.shadowBlur = 20 * beat.intensity;
+      this.ctx.shadowColor = finalColor;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, audioScale * 0.5, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.shadowBlur = 0;
+    }
+  }
+
+  private project3D(obj: Object3D): { x: number; y: number; scale: number } | null {
+    if (obj.z <= 0) return null;
+
+    const scale = this.perspective / (this.perspective + obj.z);
+    const x = this.centerX + obj.x * scale;
+    const y = this.centerY + obj.y * scale;
+
+    return { x, y, scale: obj.scale * scale };
+  }
+
+  private renderCube(x: number, y: number, size: number, obj: Object3D): void {
+    this.ctx.save();
+    this.ctx.translate(x, y);
+    this.ctx.rotate(obj.rotationZ);
+
+    // Simple 2D representation of a 3D cube
+    const halfSize = size / 2;
+    
+    // Back face (darker)
+    this.ctx.globalAlpha = 0.6;
+    this.ctx.fillRect(-halfSize + 5, -halfSize + 5, size, size);
+    
+    // Front face
+    this.ctx.globalAlpha = 1;
+    this.ctx.fillRect(-halfSize, -halfSize, size, size);
+    this.ctx.strokeRect(-halfSize, -halfSize, size, size);
+
+    // Side face
+    this.ctx.globalAlpha = 0.8;
+    this.ctx.beginPath();
+    this.ctx.moveTo(halfSize, -halfSize);
+    this.ctx.lineTo(halfSize + 5, -halfSize + 5);
+    this.ctx.lineTo(halfSize + 5, halfSize + 5);
+    this.ctx.lineTo(halfSize, halfSize);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Top face
+    this.ctx.beginPath();
+    this.ctx.moveTo(-halfSize, -halfSize);
+    this.ctx.lineTo(-halfSize + 5, -halfSize + 5);
+    this.ctx.lineTo(halfSize + 5, -halfSize + 5);
+    this.ctx.lineTo(halfSize, -halfSize);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  private renderSphere(x: number, y: number, size: number, obj: Object3D): void {
+    this.ctx.save();
+    this.ctx.translate(x, y);
+
+    // Create radial gradient for 3D effect
+    const gradient = this.ctx.createRadialGradient(-size * 0.3, -size * 0.3, 0, 0, 0, size);
+    gradient.addColorStop(0, this.ctx.fillStyle as string);
+    gradient.addColorStop(0.7, this.adjustColorBrightness(this.ctx.fillStyle as string, -0.3));
+    gradient.addColorStop(1, this.adjustColorBrightness(this.ctx.fillStyle as string, -0.6));
+
+    this.ctx.fillStyle = gradient;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  private renderPyramid(x: number, y: number, size: number, obj: Object3D): void {
+    this.ctx.save();
+    this.ctx.translate(x, y);
+    this.ctx.rotate(obj.rotationZ);
+
+    const halfSize = size / 2;
+    
+    // Base (darker)
+    this.ctx.globalAlpha = 0.7;
+    this.ctx.beginPath();
+    this.ctx.moveTo(-halfSize, halfSize);
+    this.ctx.lineTo(halfSize, halfSize);
+    this.ctx.lineTo(halfSize + 3, halfSize + 3);
+    this.ctx.lineTo(-halfSize + 3, halfSize + 3);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Front face
+    this.ctx.globalAlpha = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(-halfSize, halfSize);
+    this.ctx.lineTo(0, -halfSize);
+    this.ctx.lineTo(halfSize, halfSize);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Side face
+    this.ctx.globalAlpha = 0.8;
+    this.ctx.beginPath();
+    this.ctx.moveTo(halfSize, halfSize);
+    this.ctx.lineTo(0, -halfSize);
+    this.ctx.lineTo(halfSize + 3, halfSize + 3);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  private renderTorus(x: number, y: number, size: number, obj: Object3D): void {
+    this.ctx.save();
+    this.ctx.translate(x, y);
+    this.ctx.rotate(obj.rotationZ);
+
+    const outerRadius = size / 2;
+    const innerRadius = outerRadius * 0.4;
+    
+    // Outer circle
+    this.ctx.lineWidth = (outerRadius - innerRadius);
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, (outerRadius + innerRadius) / 2, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    // Add 3D effect with ellipses
+    this.ctx.globalAlpha = 0.7;
+    this.ctx.scale(1, 0.3);
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, outerRadius, 0, Math.PI * 2);
+    this.ctx.stroke();
+    
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, innerRadius, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
+  private renderLightingEffects(bands: any, beat: any): void {
+    // Ambient lighting effect based on audio
+    const ambientIntensity = (bands.bass + bands.mid + bands.treble) / 3;
+    this.ctx.globalAlpha = ambientIntensity * 0.1;
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.globalAlpha = 1;
+
+    // Beat flash effect
+    if (beat.isBeat) {
+      this.ctx.globalAlpha = beat.intensity * 0.2;
+      this.ctx.fillStyle = 'white';
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.ctx.globalAlpha = 1;
+    }
+  }
+
+  private adjustColorBrightness(color: string, amount: number): string {
+    // Simple brightness adjustment for rgba colors
+    if (color.startsWith('rgba')) {
+      const matches = color.match(/rgba?\(([^)]+)\)/);
+      if (matches) {
+        const values = matches[1].split(',').map(v => parseFloat(v.trim()));
+        const r = Math.max(0, Math.min(255, values[0] + (amount * 255)));
+        const g = Math.max(0, Math.min(255, values[1] + (amount * 255)));
+        const b = Math.max(0, Math.min(255, values[2] + (amount * 255)));
+        const a = values[3] || 1;
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
+      }
+    }
+    return color;
   }
 }
