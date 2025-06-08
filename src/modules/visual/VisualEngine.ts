@@ -21,22 +21,27 @@ export abstract class VisualEffect {
     this.engine = engine;
     this.parameters = effectParameterManager.getParameters(effectName);
     
+    // Debug: log effect initialization
+    console.log(`${effectName} effect initialized with parameters:`, this.parameters);
+    
     // Listen for parameter changes
     effectParameterManager.addParameterListener(effectName, (params) => {
+      console.log(`${effectName} parameters updated:`, params);
       this.parameters = params;
     });
   }
 
   abstract render(): void;
   
-  protected clear(): void {
+  protected clear(fullClear: boolean = false): void {
     const bgColor = this.engine.getBackgroundColor();
-    // Convert hex to rgba with low opacity for trail effect
+    // Convert hex to rgba with low opacity for trail effect (unless full clear is requested)
     if (bgColor.startsWith('#')) {
       const r = parseInt(bgColor.slice(1, 3), 16);
       const g = parseInt(bgColor.slice(3, 5), 16);
       const b = parseInt(bgColor.slice(5, 7), 16);
-      this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.1)`;
+      const opacity = fullClear ? 1 : 0.1;
+      this.ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
     } else {
       this.ctx.fillStyle = bgColor;
     }
@@ -255,6 +260,30 @@ export class VisualEngine {
     this.ctx.moveTo(0, this.canvas.height / 2);
     this.ctx.lineTo(this.canvas.width, this.canvas.height / 2);
     this.ctx.stroke();
+  }
+  
+  // Force a single frame render (useful for preset loading)
+  forceRender(): void {
+    if (this.currentEffect) {
+      this.currentEffect.render();
+    } else {
+      this.renderStaticFrame();
+    }
+    
+    // Always render text overlays
+    const currentTime = Date.now() - this.startTime;
+    this.textRenderer.render(currentTime);
+  }
+  
+  // Clear the canvas completely
+  clearCanvas(): void {
+    const bgColor = this.backgroundColor;
+    if (bgColor.startsWith('#')) {
+      this.ctx.fillStyle = bgColor;
+    } else {
+      this.ctx.fillStyle = bgColor;
+    }
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   dispose(): void {

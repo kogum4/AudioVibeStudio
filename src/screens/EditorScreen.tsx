@@ -248,12 +248,14 @@ export function EditorScreen() {
 
   // Preset handlers
   const handleLoadPreset = (preset: any) => {
-    // Load effect
-    if (preset.settings.currentEffect) {
-      handleEffectChange(preset.settings.currentEffect);
+    console.log('Loading preset:', preset.name);
+    
+    // Clear the canvas first
+    if (visualEngineRef.current) {
+      visualEngineRef.current.clearCanvas();
     }
     
-    // Load background color
+    // Load background color first (before effect change)
     if (preset.settings.backgroundColor) {
       localStorage.setItem('audioVibe_backgroundColor', preset.settings.backgroundColor);
       if (visualEngineRef.current) {
@@ -261,24 +263,44 @@ export function EditorScreen() {
       }
     }
     
-    // Load effect parameters
-    if (preset.settings.effectParameters && visualEngineRef.current) {
-      // Apply parameters for each effect
+    // Load effect parameters BEFORE changing the effect
+    if (preset.settings.effectParameters) {
+      // Apply parameters for ALL effects in the preset
       Object.entries(preset.settings.effectParameters).forEach(([effectName, params]) => {
         if (params && typeof params === 'object') {
+          console.log(`Setting parameters for ${effectName}:`, params);
           // Set all parameters for this effect
           effectParameterManager.setParameters(effectName, params as any);
           
-          // If this is the current effect, save to localStorage for export
-          if (effectName === preset.settings.currentEffect) {
-            localStorage.setItem(`effectParams_${effectName}`, JSON.stringify(params));
-          }
+          // Save to localStorage for export
+          localStorage.setItem(`effectParams_${effectName}`, JSON.stringify(params));
         }
       });
+    }
+    
+    // Load effect AFTER parameters are set
+    if (preset.settings.currentEffect) {
+      console.log('Setting effect to:', preset.settings.currentEffect);
       
-      // Force a render after loading parameters
-      if (!visualEngineRef.current.getIsRunning()) {
-        visualEngineRef.current.start();
+      // Set the effect - this will create a new effect instance that will use the parameters we just set
+      setCurrentEffect(preset.settings.currentEffect);
+      visualEngineRef.current?.setEffect(preset.settings.currentEffect);
+      
+      // Save current effect to localStorage for export
+      localStorage.setItem('currentEffect', preset.settings.currentEffect);
+      
+      // Force update the visual engine to ensure it's rendering
+      if (visualEngineRef.current) {
+        // Make sure the engine is running
+        if (!visualEngineRef.current.getIsRunning()) {
+          visualEngineRef.current.start();
+        }
+        
+        // Force an immediate render to show the preset
+        setTimeout(() => {
+          visualEngineRef.current?.clearCanvas();
+          visualEngineRef.current?.forceRender();
+        }, 50);
       }
     }
     
