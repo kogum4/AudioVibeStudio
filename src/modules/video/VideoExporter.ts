@@ -143,6 +143,9 @@ export class VideoExporter {
     const percentage = Math.min((currentTime / this.audioDuration) * 100, 100);
     const timeRemaining = Math.max(this.audioDuration - currentTime, 0);
     
+    // Update audio progress in visual engine
+    this.visualEngine.setAudioProgress(currentTime, this.audioDuration);
+    
     // Estimate frames (this is approximate)
     const fps = 30; // Default estimation
     const currentFrame = Math.floor(currentTime * fps);

@@ -55,6 +55,8 @@ export class VisualEngine {
   private textRenderer: TextRenderer;
   private startTime = Date.now();
   private backgroundColor = '#000000';
+  private audioProgress = 0; // Current playback progress (0-1)
+  private audioDuration = 0; // Total audio duration in seconds
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -162,6 +164,19 @@ export class VisualEngine {
     console.log('VisualEngine.setAudioPlaying called with:', playing);
     this.isAudioPlaying = playing;
     console.log('VisualEngine.isAudioPlaying is now:', this.isAudioPlaying);
+  }
+
+  setAudioProgress(currentTime: number, duration: number): void {
+    this.audioProgress = duration > 0 ? currentTime / duration : 0;
+    this.audioDuration = duration;
+  }
+
+  getAudioProgress(): number {
+    return this.audioProgress;
+  }
+
+  getAudioDuration(): number {
+    return this.audioDuration;
   }
 
   getIsRunning(): boolean {
@@ -314,15 +329,22 @@ class WaveformEffect extends VisualEffect {
       }
       this.ctx.shadowBlur = 0;
     }
+    
+    // Draw progress bar if enabled
+    if (this.parameters.showProgressBar) {
+      this.renderProgressBar();
+    }
   }
 
   private renderLine(waveformData: number[], intensity: number): void {
     this.ctx.beginPath();
     const sliceWidth = this.width / waveformData.length;
+    const waveformPosition = this.parameters.waveformPosition || 50;
+    const centerY = this.height * (waveformPosition / 100);
     let x = 0;
     
     for (let i = 0; i < waveformData.length; i++) {
-      const y = (this.height / 2) + ((waveformData[i] || 0) * this.height / 4 * intensity);
+      const y = centerY + ((waveformData[i] || 0) * this.height / 4 * intensity);
       
       if (i === 0) {
         this.ctx.moveTo(x, y);
@@ -338,11 +360,13 @@ class WaveformEffect extends VisualEffect {
 
   private renderBars(waveformData: number[], intensity: number): void {
     const barWidth = this.width / waveformData.length;
+    const waveformPosition = this.parameters.waveformPosition || 50;
+    const centerY = this.height * (waveformPosition / 100);
     
     for (let i = 0; i < waveformData.length; i++) {
       const barHeight = Math.abs(waveformData[i] || 0) * this.height / 2 * intensity;
       const x = i * barWidth;
-      const y = this.height / 2 - barHeight / 2;
+      const y = centerY - barHeight / 2;
       
       this.ctx.fillRect(x, y, barWidth - 1, barHeight);
     }
@@ -351,21 +375,59 @@ class WaveformEffect extends VisualEffect {
   private renderFilled(waveformData: number[], intensity: number): void {
     this.ctx.beginPath();
     const sliceWidth = this.width / waveformData.length;
+    const waveformPosition = this.parameters.waveformPosition || 50;
+    const centerY = this.height * (waveformPosition / 100);
     let x = 0;
     
-    // Start from bottom
-    this.ctx.moveTo(0, this.height / 2);
+    // Start from center
+    this.ctx.moveTo(0, centerY);
     
     for (let i = 0; i < waveformData.length; i++) {
-      const y = (this.height / 2) + ((waveformData[i] || 0) * this.height / 4 * intensity);
+      const y = centerY + ((waveformData[i] || 0) * this.height / 4 * intensity);
       this.ctx.lineTo(x, y);
       x += sliceWidth;
     }
     
     // Close the path
-    this.ctx.lineTo(this.width, this.height / 2);
+    this.ctx.lineTo(this.width, centerY);
     this.ctx.closePath();
     this.ctx.fill();
+  }
+
+  private renderProgressBar(): void {
+    const progress = this.engine.getAudioProgress();
+    const progressBarHeight = 4;
+    const progressBarPosition = this.parameters.progressBarPosition || 50;
+    const progressBarY = this.height - progressBarPosition;
+    
+    // Background line
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    this.ctx.lineWidth = progressBarHeight;
+    this.ctx.lineCap = 'round';
+    this.ctx.beginPath();
+    this.ctx.moveTo(50, progressBarY);
+    this.ctx.lineTo(this.width - 50, progressBarY);
+    this.ctx.stroke();
+    
+    // Progress line
+    if (progress > 0) {
+      const progressWidth = (this.width - 100) * progress;
+      this.ctx.strokeStyle = this.parameters.color || '#4ecdc4';
+      this.ctx.lineWidth = progressBarHeight;
+      this.ctx.lineCap = 'round';
+      this.ctx.beginPath();
+      this.ctx.moveTo(50, progressBarY);
+      this.ctx.lineTo(50 + progressWidth, progressBarY);
+      this.ctx.stroke();
+      
+      // Progress indicator dot (if enabled)
+      if (this.parameters.showProgressIndicator) {
+        this.ctx.fillStyle = this.parameters.color || '#4ecdc4';
+        this.ctx.beginPath();
+        this.ctx.arc(50 + progressWidth, progressBarY, progressBarHeight * 2, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    }
   }
 }
 
@@ -813,13 +875,13 @@ class GradientEffect extends VisualEffect {
     const hex1 = color1.replace('#', '');
     const hex2 = color2.replace('#', '');
     
-    const r1 = parseInt(hex1.substr(0, 2), 16);
-    const g1 = parseInt(hex1.substr(2, 2), 16);
-    const b1 = parseInt(hex1.substr(4, 2), 16);
+    const r1 = parseInt(hex1.slice(0, 2), 16);
+    const g1 = parseInt(hex1.slice(2, 4), 16);
+    const b1 = parseInt(hex1.slice(4, 6), 16);
     
-    const r2 = parseInt(hex2.substr(0, 2), 16);
-    const g2 = parseInt(hex2.substr(2, 2), 16);
-    const b2 = parseInt(hex2.substr(4, 2), 16);
+    const r2 = parseInt(hex2.slice(0, 2), 16);
+    const g2 = parseInt(hex2.slice(2, 4), 16);
+    const b2 = parseInt(hex2.slice(4, 6), 16);
     
     const r = Math.round(r1 + (r2 - r1) * ratio);
     const g = Math.round(g1 + (g2 - g1) * ratio);

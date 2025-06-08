@@ -141,6 +141,36 @@ effectParameterManager.registerEffect('waveform', [
     options: ['line', 'bars', 'filled'],
     defaultValue: 'line',
     description: 'Waveform style'
+  },
+  {
+    name: 'showProgressBar',
+    type: 'boolean',
+    defaultValue: true,
+    description: 'Show progress bar'
+  },
+  {
+    name: 'showProgressIndicator',
+    type: 'boolean',
+    defaultValue: true,
+    description: 'Show progress indicator dot'
+  },
+  {
+    name: 'progressBarPosition',
+    type: 'number',
+    min: 20,
+    max: 1800,
+    step: 10,
+    defaultValue: 50,
+    description: 'Progress bar position from bottom (px)'
+  },
+  {
+    name: 'waveformPosition',
+    type: 'number',
+    min: 20,
+    max: 80,
+    step: 1,
+    defaultValue: 50,
+    description: 'Waveform vertical position (%)'
   }
 ]);
 

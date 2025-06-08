@@ -182,8 +182,11 @@ export function EditorScreen() {
 
     // Update time periodically
     const timeInterval = setInterval(() => {
-      if (isPlaying) {
-        setCurrentTime(audioManager.getCurrentTime());
+      const currentTime = audioManager.getCurrentTime();
+      setCurrentTime(currentTime);
+      // Always update progress in visual engine
+      if (visualEngineRef.current) {
+        visualEngineRef.current.setAudioProgress(currentTime, duration);
       }
     }, 100);
 
