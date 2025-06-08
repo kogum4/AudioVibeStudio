@@ -9,7 +9,7 @@ export abstract class VisualEffect {
   protected height: number;
   protected analyzer: AudioAnalyzer;
   protected parameters: EffectParameter = {};
-  protected effectName: string;
+  public effectName: string;
   protected engine: VisualEngine;
 
   constructor(ctx: CanvasRenderingContext2D, width: number, height: number, analyzer: AudioAnalyzer, effectName: string, engine: VisualEngine) {
@@ -21,20 +21,22 @@ export abstract class VisualEffect {
     this.engine = engine;
     this.parameters = effectParameterManager.getParameters(effectName);
     
-    // Debug: log effect initialization
-    console.log(`${effectName} effect initialized with parameters:`, this.parameters);
-    
     // Listen for parameter changes
     effectParameterManager.addParameterListener(effectName, (params) => {
-      console.log(`${effectName} parameters updated:`, params);
       this.parameters = params;
     });
   }
 
   abstract render(): void;
   
+  // Method to update parameters after effect creation
+  updateParameters(params: EffectParameter): void {
+    this.parameters = { ...this.parameters, ...params };
+  }
+  
   protected clear(fullClear: boolean = false): void {
     const bgColor = this.engine.getBackgroundColor();
+    
     // Convert hex to rgba with low opacity for trail effect (unless full clear is requested)
     if (bgColor.startsWith('#')) {
       const r = parseInt(bgColor.slice(1, 3), 16);
@@ -83,8 +85,6 @@ export class VisualEngine {
     this.resize();
     window.addEventListener('resize', () => this.resize());
     
-    // Debug: Log analyzer initialization
-    console.log('VisualEngine initialized with analyzer:', this.analyzer);
   }
 
   private resize(): void {
@@ -124,10 +124,20 @@ export class VisualEngine {
       default:
         this.currentEffect = new WaveformEffect(this.ctx, this.canvas.width, this.canvas.height, this.analyzer, 'waveform', this);
     }
+    
+    // After creating the effect, update its parameters from the parameter manager
+    if (this.currentEffect) {
+      const currentParams = effectParameterManager.getParameters(effectType);
+      this.currentEffect.updateParameters(currentParams);
+    }
   }
 
   getParameterManager() {
     return effectParameterManager;
+  }
+  
+  getCurrentEffect() {
+    return this.currentEffect;
   }
 
   // Text overlay methods
@@ -166,9 +176,7 @@ export class VisualEngine {
   }
 
   setAudioPlaying(playing: boolean): void {
-    console.log('VisualEngine.setAudioPlaying called with:', playing);
     this.isAudioPlaying = playing;
-    console.log('VisualEngine.isAudioPlaying is now:', this.isAudioPlaying);
   }
 
   setAudioProgress(currentTime: number, duration: number): void {
@@ -189,25 +197,19 @@ export class VisualEngine {
   }
 
   start(): void {
-    console.log('VisualEngine.start() called, isRunning:', this.isRunning);
     if (this.isRunning) {
-      console.log('Already running, returning early');
       return;
     }
     
     if (!this.currentEffect) {
-      console.log('No current effect, setting waveform');
       this.setEffect('waveform');
     }
     
     this.isRunning = true;
-    console.log('Starting animation, isRunning set to:', this.isRunning);
     this.animate();
   }
 
   stop(): void {
-    console.log('VisualEngine.stop() called! Stack trace:');
-    console.trace();
     this.isRunning = false;
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
@@ -216,21 +218,16 @@ export class VisualEngine {
   }
 
   private animate(): void {
-    console.log('animate() called, isRunning:', this.isRunning, 'isAudioPlaying:', this.isAudioPlaying);
     if (!this.isRunning) return;
 
     // Only render with audio data when audio is playing
     if (this.currentEffect) {
       if (this.isAudioPlaying) {
-        console.log('Rendering effect because audio is playing');
         this.currentEffect.render();
       } else {
-        console.log('Rendering static frame because audio is paused');
         // Render static frame when paused
         this.renderStaticFrame();
       }
-    } else {
-      console.log('No current effect set');
     }
 
     // Always render text overlays
@@ -265,7 +262,12 @@ export class VisualEngine {
   // Force a single frame render (useful for preset loading)
   forceRender(): void {
     if (this.currentEffect) {
-      this.currentEffect.render();
+      // Ensure the effect has the latest parameters before rendering
+      const currentParams = effectParameterManager.getParameters(this.currentEffect.effectName);
+      this.currentEffect.updateParameters(currentParams);
+      
+      // Use a modified render that ensures visibility
+      this.forceRenderWithVisibility();
     } else {
       this.renderStaticFrame();
     }
@@ -273,6 +275,23 @@ export class VisualEngine {
     // Always render text overlays
     const currentTime = Date.now() - this.startTime;
     this.textRenderer.render(currentTime);
+  }
+  
+  // Special render method for preset loading that ensures visibility
+  private forceRenderWithVisibility(): void {
+    if (!this.currentEffect) return;
+    
+    // Clear with full opacity first
+    this.clearCanvas();
+    
+    // Set higher opacity for canvas operations
+    this.ctx.globalAlpha = 1.0;
+    
+    // Call the effect render method
+    this.currentEffect.render();
+    
+    // Reset alpha
+    this.ctx.globalAlpha = 1.0;
   }
   
   // Clear the canvas completely
@@ -287,8 +306,6 @@ export class VisualEngine {
   }
 
   dispose(): void {
-    console.log('VisualEngine.dispose() called! Stack trace:');
-    console.trace();
     this.stop();
     window.removeEventListener('resize', () => this.resize());
   }
@@ -300,24 +317,18 @@ class WaveformEffect extends VisualEffect {
   }
 
   render(): void {
-    console.log('WaveformEffect.render() called');
     this.clear();
     
     const waveformData = this.analyzer.getWaveformData();
     const bands = this.analyzer.getFrequencyBands();
     const beat = this.analyzer.detectBeat();
     
-    // Debug: Always log for now to see what's happening
-    console.log('Waveform data length:', waveformData.length);
-    console.log('Frequency bands:', bands);
-    console.log('Sample waveform values:', waveformData.slice(0, 5));
-    
     // Get parameters
-    const intensity = this.parameters.intensity / 100;
-    const color = this.parameters.color;
-    const lineWidth = this.parameters.lineWidth;
-    const glow = this.parameters.glow;
-    const style = this.parameters.style;
+    const intensity = (this.parameters.intensity || 50) / 100;
+    const color = this.parameters.color || '#4ecdc4';
+    const lineWidth = this.parameters.lineWidth || 2;
+    const glow = this.parameters.glow !== undefined ? this.parameters.glow : true;
+    const style = this.parameters.style || 'line';
     
     // Set color - use parameter color with dynamic adjustments
     if (color) {

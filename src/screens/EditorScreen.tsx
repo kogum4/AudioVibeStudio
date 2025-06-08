@@ -249,6 +249,7 @@ export function EditorScreen() {
   // Preset handlers
   const handleLoadPreset = (preset: any) => {
     console.log('Loading preset:', preset.name);
+    console.log('Preset data:', preset);
     
     // Clear the canvas first
     if (visualEngineRef.current) {
@@ -257,6 +258,7 @@ export function EditorScreen() {
     
     // Load background color first (before effect change)
     if (preset.settings.backgroundColor) {
+      console.log('Setting background color:', preset.settings.backgroundColor);
       localStorage.setItem('audioVibe_backgroundColor', preset.settings.backgroundColor);
       if (visualEngineRef.current) {
         visualEngineRef.current.setBackgroundColor(preset.settings.backgroundColor);
@@ -265,6 +267,7 @@ export function EditorScreen() {
     
     // Load effect parameters BEFORE changing the effect
     if (preset.settings.effectParameters) {
+      console.log('Loading effect parameters:', preset.settings.effectParameters);
       // Apply parameters for ALL effects in the preset
       Object.entries(preset.settings.effectParameters).forEach(([effectName, params]) => {
         if (params && typeof params === 'object') {
@@ -276,6 +279,8 @@ export function EditorScreen() {
           localStorage.setItem(`effectParams_${effectName}`, JSON.stringify(params));
         }
       });
+    } else {
+      console.warn('No effect parameters found in preset');
     }
     
     // Load effect AFTER parameters are set
@@ -293,19 +298,26 @@ export function EditorScreen() {
       if (visualEngineRef.current) {
         // Make sure the engine is running
         if (!visualEngineRef.current.getIsRunning()) {
+          console.log('Visual engine not running, starting...');
           visualEngineRef.current.start();
         }
         
-        // Force an immediate render to show the preset
+        // Force an immediate render to show the preset with a delay to ensure parameters are applied
         setTimeout(() => {
-          visualEngineRef.current?.clearCanvas();
-          visualEngineRef.current?.forceRender();
-        }, 50);
+          console.log('Forcing render after preset load');
+          if (visualEngineRef.current) {
+            console.log('Visual engine current effect:', visualEngineRef.current.getCurrentEffect?.()?.constructor.name);
+            console.log('Visual engine is running:', visualEngineRef.current.getIsRunning());
+            visualEngineRef.current.clearCanvas();
+            visualEngineRef.current.forceRender();
+          }
+        }, 200);
       }
     }
     
     // Load text overlays
     if (preset.settings.textOverlays) {
+      console.log('Loading text overlays:', preset.settings.textOverlays);
       handleTextOverlayUpdate(preset.settings.textOverlays);
     }
     

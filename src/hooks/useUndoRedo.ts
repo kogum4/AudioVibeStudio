@@ -118,12 +118,12 @@ export function useUndoRedo<T>(
   const canRedo = currentIndex < history.length - 1;
 
   const getUndoDescription = () => {
-    if (!canUndo) return null;
+    if (!canUndo || currentIndex <= 0 || !history[currentIndex]) return null;
     return history[currentIndex].description;
   };
 
   const getRedoDescription = () => {
-    if (!canRedo) return null;
+    if (!canRedo || currentIndex + 1 >= history.length || !history[currentIndex + 1]) return null;
     return history[currentIndex + 1].description;
   };
 

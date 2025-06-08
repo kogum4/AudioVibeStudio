@@ -83,6 +83,8 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
   const handleSavePreset = () => {
     if (!saveForm.name.trim()) return;
 
+    console.log('Saving preset with effect parameters:', effectParameters);
+    
     const preset = {
       name: saveForm.name,
       description: saveForm.description,
@@ -96,6 +98,8 @@ export const PresetManager: React.FC<PresetManagerProps> = ({
       tags: saveForm.tags,
       version: '1.0.0'
     };
+    
+    console.log('Final preset object:', preset);
 
     const id = presetManager.savePreset(preset);
     if (id) {
