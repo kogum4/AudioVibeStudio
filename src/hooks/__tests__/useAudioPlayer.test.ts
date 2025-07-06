@@ -41,6 +41,8 @@ class MockFile {
 global.File = MockFile as any;
 
 describe('useAudioPlayer', () => {
+  const mockFile = new MockFile('test.mp3') as any;
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -116,18 +118,21 @@ describe('useAudioPlayer', () => {
     expect(state.error).toBe(errorMessage);
   });
 
-  it('should play audio when loaded', () => {
+  it('should play audio when loaded', async () => {
     const { result } = renderHook(() => useAudioPlayer());
     
-    // First load a file
-    act(() => {
-      result.current[0] = { ...result.current[0], isLoaded: true };
+    // Mock successful load
+    mockAudioManager.loadAudioFile.mockResolvedValueOnce(undefined);
+    mockAudioManager.getDuration.mockReturnValue(120);
+    
+    // Load a file first
+    await act(async () => {
+      await result.current[1].loadFile(mockFile);
     });
 
-    const [, controls] = result.current;
-
+    // Now play
     act(() => {
-      controls.play();
+      result.current[1].play();
     });
 
     expect(mockAudioManager.play).toHaveBeenCalled();
@@ -166,18 +171,20 @@ describe('useAudioPlayer', () => {
     expect(mockAudioManager.stop).toHaveBeenCalled();
   });
 
-  it('should seek to position when loaded', () => {
+  it('should seek to position when loaded', async () => {
     const { result } = renderHook(() => useAudioPlayer());
     
-    // First load a file
-    act(() => {
-      result.current[0] = { ...result.current[0], isLoaded: true };
+    // Mock successful load
+    mockAudioManager.loadAudioFile.mockResolvedValueOnce(undefined);
+    mockAudioManager.getDuration.mockReturnValue(120);
+    
+    // Load a file first
+    await act(async () => {
+      await result.current[1].loadFile(mockFile);
     });
 
-    const [, controls] = result.current;
-
     act(() => {
-      controls.seek(60);
+      result.current[1].seek(60);
     });
 
     expect(mockAudioManager.seek).toHaveBeenCalledWith(60);
@@ -218,25 +225,28 @@ describe('useAudioPlayer', () => {
     expect(mockAudioManager.setVolume).toHaveBeenCalledWith(0);
   });
 
-  it('should handle play errors gracefully', () => {
+  it('should handle play errors gracefully', async () => {
     mockAudioManager.play.mockImplementation(() => {
       throw new Error('Playback failed');
     });
 
     const { result } = renderHook(() => useAudioPlayer());
     
-    // First load a file
-    act(() => {
-      result.current[0] = { ...result.current[0], isLoaded: true };
+    // Mock successful load
+    mockAudioManager.loadAudioFile.mockResolvedValueOnce(undefined);
+    mockAudioManager.getDuration.mockReturnValue(120);
+    
+    // Load a file first
+    await act(async () => {
+      await result.current[1].loadFile(mockFile);
     });
 
-    const [, controls] = result.current;
-
+    // Now try to play (which will fail)
     act(() => {
-      controls.play();
+      result.current[1].play();
     });
 
     const [state] = result.current;
-    expect(state.error).toBe('Failed to play audio');
+    expect(state.error).toBe('Playback failed');
   });
 });
