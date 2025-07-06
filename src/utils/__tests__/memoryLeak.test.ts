@@ -219,6 +219,8 @@ describe('Memory utility functions', () => {
 
     it('should cleanup canvas resources', () => {
       const mockCanvas = document.createElement('canvas');
+      mockCanvas.width = 300;
+      mockCanvas.height = 150;
       const mockCtx = {
         clearRect: jest.fn()
       } as any;
@@ -227,7 +229,7 @@ describe('Memory utility functions', () => {
       
       cleanupCanvasResources(mockCanvas);
       
-      expect(mockCtx.clearRect).toHaveBeenCalledWith(0, 0, mockCanvas.width, mockCanvas.height);
+      expect(mockCtx.clearRect).toHaveBeenCalledWith(0, 0, 300, 150);
       expect(mockCanvas.width).toBe(1);
       expect(mockCanvas.height).toBe(1);
     });

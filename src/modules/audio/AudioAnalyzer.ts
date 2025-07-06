@@ -95,12 +95,12 @@ export class AudioAnalyzer {
     return { isBeat, intensity };
   }
 
-  getWaveformData(): number[] {
+  getWaveformData(): Float32Array {
     const timeDomainData = this.audioManager.getTimeDomainData();
-    const normalized: number[] = [];
+    const normalized = new Float32Array(timeDomainData.length);
 
     for (let i = 0; i < timeDomainData.length; i++) {
-      normalized.push(((timeDomainData[i] || 128) - 128) / 128);
+      normalized[i] = ((timeDomainData[i] || 128) - 128) / 128;
     }
 
     return normalized;
