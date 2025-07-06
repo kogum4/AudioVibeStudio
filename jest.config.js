@@ -31,4 +31,6 @@ module.exports = {
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   setupFiles: ['<rootDir>/jest.setup.js'],
+  verbose: false,
+  silent: process.env.CI === 'true',
 };
