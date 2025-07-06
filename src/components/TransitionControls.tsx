@@ -68,7 +68,8 @@ export const TransitionControls: React.FC<TransitionControlsProps> = ({
       case 'fade':
         return TransitionEngine.createFadeTransition(baseProps.duration, baseProps.audioReactive);
       case 'slide':
-        return TransitionEngine.createSlideTransition(direction, baseProps.duration, baseProps.audioReactive);
+        const slideDirection = direction === 'center' ? 'left' : direction as 'left' | 'right' | 'up' | 'down';
+        return TransitionEngine.createSlideTransition(slideDirection, baseProps.duration, baseProps.audioReactive);
       case 'zoom':
         return TransitionEngine.createZoomTransition(baseProps.duration, baseProps.audioReactive);
       case 'rotation':

@@ -376,7 +376,7 @@ class WaveformEffect extends VisualEffect {
     }
   }
 
-  private renderLine(waveformData: number[], intensity: number): void {
+  private renderLine(waveformData: Float32Array, intensity: number): void {
     this.ctx.beginPath();
     const sliceWidth = this.width / waveformData.length;
     const waveformPosition = this.parameters.waveformPosition || 50;
@@ -398,7 +398,7 @@ class WaveformEffect extends VisualEffect {
     this.ctx.stroke();
   }
 
-  private renderBars(waveformData: number[], intensity: number): void {
+  private renderBars(waveformData: Float32Array, intensity: number): void {
     const barWidth = this.width / waveformData.length;
     const waveformPosition = this.parameters.waveformPosition || 50;
     const centerY = this.height * (waveformPosition / 100);
@@ -412,7 +412,7 @@ class WaveformEffect extends VisualEffect {
     }
   }
 
-  private renderFilled(waveformData: number[], intensity: number): void {
+  private renderFilled(waveformData: Float32Array, intensity: number): void {
     this.ctx.beginPath();
     const sliceWidth = this.width / waveformData.length;
     const waveformPosition = this.parameters.waveformPosition || 50;
